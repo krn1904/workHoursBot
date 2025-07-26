@@ -98,40 +98,31 @@ class WorkLoggerBot {
 
   // Handle bot commands like /summary, /today, etc.
   async handleCommand(chatId, text) {
-    // Split command and arguments
-    const [command, ...args] = text.split(' ');
-    
+    const command = text.split(' ')[0].toLowerCase();
+    const arg = text.split(' ').slice(1).join(' ');
     let response;
-    
-    // Route to appropriate command handler
-    switch (command.toLowerCase()) {
-      case '/start':
-      case '/help':
-        response = this.commands.getHelpMessage();
-        break;
-      
+    switch (command) {
       case '/summary':
         response = await this.commands.handleSummary();
         break;
-      
       case '/today':
         response = await this.commands.handleToday();
         break;
-      
       case '/log':
         response = await this.commands.handleLog();
         break;
-      
       case '/category':
-        response = await this.commands.handleCategory(args.join(' '));
+        response = await this.commands.handleCategory(arg);
         break;
-      
+      case '/paycycle':
+        response = await this.commands.handlePayCycle();
+        break;
+      case '/help':
       default:
-        response = '❌ Unknown command. Use /help to see available commands.';
+        response = this.commands.getHelpMessage();
+        break;
     }
-
-    // Send response with Markdown formatting
-    await this.bot.sendMessage(chatId, response, { parse_mode: 'Markdown' });
+    await this.bot.sendMessage(chatId, response);
   }
 
   // Save work entry to database and send confirmation

@@ -170,6 +170,37 @@ class Commands {
     }
   }
 
+  // Handle /paycycle command - shows hours for current pay cycle
+  async handlePayCycle() {
+    try {
+      const { cycleStart, cycleEnd } = getCurrentPayCycle();
+      const entries = await this.db.getEntriesBetween(cycleStart, cycleEnd);
+      // Calculate hours for pay cycle by type
+      let weekdayHours = 0, saturdayHours = 0, sundayHours = 0;
+      entries.forEach(entry => {
+        const day = moment(entry.date).day();
+        if (day === 0) {
+          sundayHours += entry.hours;
+        } else if (day === 6) {
+          saturdayHours += entry.hours;
+        } else {
+          weekdayHours += entry.hours;
+        }
+      });
+      const total = weekdayHours + saturdayHours + sundayHours;
+      const formattedTotal = this.parser.formatHours(total);
+      let response = `🗓️ **Current Pay Cycle** (${cycleStart} to ${cycleEnd})\n` +
+        `   - Total: ${formattedTotal} hours\n` +
+        `   - Weekdays: ${this.parser.formatHours(weekdayHours)}h\n` +
+        `   - Saturday: ${this.parser.formatHours(saturdayHours)}h\n` +
+        `   - Sunday: ${this.parser.formatHours(sundayHours)}h`;
+      return response;
+    } catch (error) {
+      console.error('Error in handlePayCycle:', error);
+      return '❌ Error generating pay cycle summary. Please try again.';
+    }
+  }
+
   // Return help message with usage instructions and available commands
   getHelpMessage() {
     return `🤖 **Work Hours Logger Bot**\n\n` +
@@ -182,8 +213,21 @@ class Commands {
            `• /today - Today's logged hours\n` +
            `• /log - Last 5 entries\n` +
            `• /category <tag> - Hours for specific category\n` +
+           `• /paycycle - Hours for current pay cycle (fortnightly)\n` +
            `• /help - Show this message`;
   }
+}
+
+// Pay cycle start date (must be a Monday)
+const PAY_CYCLE_START = '2024-07-21'; // YYYY-MM-DD
+
+function getCurrentPayCycle(today = moment()) {
+  const start = moment(PAY_CYCLE_START);
+  const daysSinceStart = today.diff(start, 'days');
+  const cyclesSinceStart = Math.floor(daysSinceStart / 14);
+  const cycleStart = start.clone().add(cyclesSinceStart * 14, 'days');
+  const cycleEnd = cycleStart.clone().add(13, 'days'); // 14 days inclusive
+  return { cycleStart: cycleStart.format('YYYY-MM-DD'), cycleEnd: cycleEnd.format('YYYY-MM-DD') };
 }
 
 module.exports = Commands;
