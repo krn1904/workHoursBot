@@ -7,8 +7,8 @@ class MessageParser {
     this.hoursRegex = /(\d+(?:\.\d+)?)\s*(?:hours?|hrs?|h\b)/i;
     // Detect "yesterday" in messages
     this.yesterdayRegex = /yesterday/i;
-    // Match date formats like 12/25 or 12/25/2023
-    this.dateRegex = /(\d{1,2}\/\d{1,2}(?:\/\d{4})?)/;
+    // Match date formats like 12/25, 25/12, 12/25/2023, 25/12/2023, or 2023-12-25
+    this.dateRegex = /(\d{1,2}[\/\-]\d{1,2}(?:[\/\-]\d{2,4})?|\d{4}-\d{2}-\d{2})/;
     
     // Keywords that might indicate project tags or categories
     this.tagKeywords = [
@@ -45,12 +45,19 @@ class MessageParser {
       // Look for specific date formats
       const dateMatch = message.match(this.dateRegex);
       if (dateMatch) {
-        const parsedDate = moment(dateMatch[1], ['M/D/YYYY', 'M/D']);
-        if (parsedDate.isValid()) {
-          // If no year provided, assume current year
-          if (!dateMatch[1].includes('/')) {
-            parsedDate.year(moment().year());
-          }
+        let parsedDate = null;
+        const dateStr = dateMatch[1];
+        // Try YYYY-MM-DD first
+        if (/\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+          parsedDate = moment(dateStr, 'YYYY-MM-DD');
+        } else if (/\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4}/.test(dateStr)) {
+          // Try MM/DD/YYYY and DD/MM/YYYY
+          parsedDate = moment(dateStr, ['MM/DD/YYYY', 'DD/MM/YYYY', 'MM-DD-YYYY', 'DD-MM-YYYY']);
+        } else if (/\d{1,2}[\/\-]\d{1,2}/.test(dateStr)) {
+          // Try MM/DD and DD/MM (assume current year)
+          parsedDate = moment(dateStr + '/' + moment().year(), ['MM/DD/YYYY', 'DD/MM/YYYY', 'MM-DD-YYYY', 'DD-MM-YYYY']);
+        }
+        if (parsedDate && parsedDate.isValid()) {
           result.date = parsedDate.format('YYYY-MM-DD');
         }
       }
