@@ -1,11 +1,28 @@
 const moment = require('moment');
 
+// Pay cycle start date (must be a Monday)
+const PAY_CYCLE_START = '2024-07-21'; // YYYY-MM-DD
+
+function getCurrentPayCycle(today = moment()) {
+  const start = moment(PAY_CYCLE_START);
+  const daysSinceStart = today.diff(start, 'days');
+  const cyclesSinceStart = Math.floor(daysSinceStart / 14);
+  const cycleStart = start.clone().add(cyclesSinceStart * 14, 'days');
+  const cycleEnd = cycleStart.clone().add(13, 'days'); // 14 days inclusive
+  return { cycleStart: cycleStart.format('YYYY-MM-DD'), cycleEnd: cycleEnd.format('YYYY-MM-DD') };
+}
+
 // Class for handling bot commands like /summary, /today, /log, etc.
 class Commands {
   constructor(database, messageParser) {
     // Store references to database and parser instances
     this.db = database;
     this.parser = messageParser;
+  }
+
+  // Make getCurrentPayCycle accessible
+  getCurrentPayCycle() {
+    return getCurrentPayCycle();
   }
 
   // Handle /summary command - shows weekly and monthly work totals
@@ -53,15 +70,15 @@ class Commands {
       const monthHours = this.parser.formatHours(month.total);
 
       // Build formatted response message
-      return `📊 **Work Summary**\n\n` +
-             `📅 **This Week:** ${weekHours} hours (${weekEntries.length} entries)\n` +
-             `   - Weekdays: ${this.parser.formatHours(week.weekdayHours)}h\n` +
-             `   - Saturday: ${this.parser.formatHours(week.saturdayHours)}h\n` +
-             `   - Sunday: ${this.parser.formatHours(week.sundayHours)}h\n` +
-             `📅 **This Month:** ${monthHours} hours (${monthEntries.length} entries)\n` +
-             `   - Weekdays: ${this.parser.formatHours(month.weekdayHours)}h\n` +
-             `   - Saturday: ${this.parser.formatHours(month.saturdayHours)}h\n` +
-             `   - Sunday: ${this.parser.formatHours(month.sundayHours)}h`;
+      return `📊 *Work Summary*\n\n` +
+             `📅 *This Week:* ${weekHours} hours (${weekEntries.length} entries)\n` +
+             `   🏢 Weekdays: ${this.parser.formatHours(week.weekdayHours)}h\n` +
+             `   📆 Saturday: ${this.parser.formatHours(week.saturdayHours)}h\n` +
+             `   ☀️ Sunday: ${this.parser.formatHours(week.sundayHours)}h\n` +
+             `🗓️ *This Month:* ${monthHours} hours (${monthEntries.length} entries)\n` +
+             `   🏢 Weekdays: ${this.parser.formatHours(month.weekdayHours)}h\n` +
+             `   📆 Saturday: ${this.parser.formatHours(month.saturdayHours)}h\n` +
+             `   ☀️ Sunday: ${this.parser.formatHours(month.sundayHours)}h`;
     } catch (error) {
       console.error('Error in handleSummary:', error);
       return '❌ Error generating summary. Please try again.';
@@ -95,15 +112,15 @@ class Commands {
       const formattedTotal = this.parser.formatHours(total);
 
       // Build response with individual entries
-      let response = `📅 **Today's Work Log** (${formattedTotal} hours total)\n` +
-        `   - Weekdays: ${this.parser.formatHours(weekdayHours)}h\n` +
-        `   - Saturday: ${this.parser.formatHours(saturdayHours)}h\n` +
-        `   - Sunday: ${this.parser.formatHours(sundayHours)}h\n\n`;
+      let response = `📅 *Today's Work Log* (${formattedTotal} hours total)\n` +
+        `   🏢 Weekdays: ${this.parser.formatHours(weekdayHours)}h\n` +
+        `   📆 Saturday: ${this.parser.formatHours(saturdayHours)}h\n` +
+        `   ☀️ Sunday: ${this.parser.formatHours(sundayHours)}h\n\n`;
       entries.forEach((entry, index) => {
         const hours = this.parser.formatHours(entry.hours);
-        const tag = entry.tag ? ` [${entry.tag}]` : '';
+        const tag = entry.tag ? ` 🏷️ [${entry.tag}]` : '';
         const time = moment(entry.timestamp).format('HH:mm');
-        response += `${index + 1}. ${hours}h${tag} (logged at ${time})\n`;
+        response += `${index + 1}. ${hours}h${tag} (🕒 ${time})\n`;
       });
 
       return response;
@@ -125,15 +142,15 @@ class Commands {
       }
 
       // Build response with entry details
-      let response = '📝 **Last 5 Work Entries**\n\n';
+      let response = '📝 *Last 5 Work Entries*\n\n';
       
       // Format each entry with date and time information
       entries.forEach((entry, index) => {
         const hours = this.parser.formatHours(entry.hours);
-        const tag = entry.tag ? ` [${entry.tag}]` : '';
+        const tag = entry.tag ? ` 🏷️ [${entry.tag}]` : '';
         const date = moment(entry.date).format('MMM DD');
         const time = moment(entry.timestamp).format('HH:mm');
-        response += `${index + 1}. ${hours}h${tag} on ${date} (${time})\n`;
+        response += `${index + 1}. ${hours}h${tag} on 📅 ${date} (🕒 ${time})\n`;
       });
 
       return response;
@@ -161,7 +178,7 @@ class Commands {
 
       // Format and return category summary
       const hours = this.parser.formatHours(data.totalHours);
-      return `📊 **Category: "${tag}"**\n\n` +
+      return `🗂️ *Category:* "${tag}"\n\n` +
              `⏱️ Total Hours: ${hours}\n` +
              `📝 Total Entries: ${data.entries}`;
     } catch (error) {
@@ -189,11 +206,11 @@ class Commands {
       });
       const total = weekdayHours + saturdayHours + sundayHours;
       const formattedTotal = this.parser.formatHours(total);
-      let response = `🗓️ **Current Pay Cycle** (${cycleStart} to ${cycleEnd})\n` +
-        `   - Total: ${formattedTotal} hours\n` +
-        `   - Weekdays: ${this.parser.formatHours(weekdayHours)}h\n` +
-        `   - Saturday: ${this.parser.formatHours(saturdayHours)}h\n` +
-        `   - Sunday: ${this.parser.formatHours(sundayHours)}h`;
+      let response = `🗓️ *Current Pay Cycle* (${cycleStart} to ${cycleEnd})\n` +
+        `   ⏳ Total: ${formattedTotal} hours\n` +
+        `   🏢 Weekdays: ${this.parser.formatHours(weekdayHours)}h\n` +
+        `   📆 Saturday: ${this.parser.formatHours(saturdayHours)}h\n` +
+        `   ☀️ Sunday: ${this.parser.formatHours(sundayHours)}h`;
       return response;
     } catch (error) {
       console.error('Error in handlePayCycle:', error);
@@ -203,12 +220,19 @@ class Commands {
 
   // Return help message with usage instructions and available commands
   getHelpMessage() {
-    return `🤖 **Work Hours Logger Bot**\n\n` +
-           `**Log work by sending messages like:**\n` +
+    const { cycleStart, cycleEnd } = this.getCurrentPayCycle();
+    return `🤖 *Work Hours Bot Help*\n\n` +
+           `👋 *Welcome!* Your work hours tracking bot is ready.\n\n` +
+           `📅 *Current Pay Cycle:* ${cycleStart} to ${cycleEnd}\n\n` +
+           `💡 *Quick Start:*\n` +
+           `• Send a message like "Worked 6 hours today"\n` +
+           `• Use /help to see all commands\n` +
+           `• Use /paycycle to check current cycle hours\n\n` +
+           `📝 *Log work by sending messages like:*\n` +
            `• "Worked 6 hours today"\n` +
            `• "5.5 hrs on freelance"\n` +
            `• "Yesterday I did 3 hours on project X"\n\n` +
-           `**Commands:**\n` +
+           `⚡ *Commands:*\n` +
            `• /summary - Weekly and monthly totals\n` +
            `• /today - Today's logged hours\n` +
            `• /log - Last 5 entries\n` +
@@ -216,18 +240,6 @@ class Commands {
            `• /paycycle - Hours for current pay cycle (fortnightly)\n` +
            `• /help - Show this message`;
   }
-}
-
-// Pay cycle start date (must be a Monday)
-const PAY_CYCLE_START = '2024-07-21'; // YYYY-MM-DD
-
-function getCurrentPayCycle(today = moment()) {
-  const start = moment(PAY_CYCLE_START);
-  const daysSinceStart = today.diff(start, 'days');
-  const cyclesSinceStart = Math.floor(daysSinceStart / 14);
-  const cycleStart = start.clone().add(cyclesSinceStart * 14, 'days');
-  const cycleEnd = cycleStart.clone().add(13, 'days'); // 14 days inclusive
-  return { cycleStart: cycleStart.format('YYYY-MM-DD'), cycleEnd: cycleEnd.format('YYYY-MM-DD') };
 }
 
 module.exports = Commands;

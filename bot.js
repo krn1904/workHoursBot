@@ -2,6 +2,7 @@ const TelegramBot = require('node-telegram-bot-api');
 const Database = require('./database');
 const MessageParser = require('./messageParser');
 const Commands = require('./commands');
+const schedule = require('node-schedule');
 
 // Main bot class that handles all Telegram interactions
 class WorkLoggerBot {
@@ -24,6 +25,58 @@ class WorkLoggerBot {
     // Set up message and error handlers
     this.setupHandlers();
     console.log('Telegram bot initialized and polling...');
+    
+    // Send greeting message to authorized user
+    this.sendGreeting();
+    this.scheduleDailyReminder();
+  }
+
+  // Helper to get a random time between 11:00 and 23:59
+  getRandomReminderTime() {
+    const min = 11 * 60; // 11:00 in minutes
+    const max = 23 * 60 + 59; // 23:59 in minutes
+    const randomMinutes = Math.floor(Math.random() * (max - min + 1)) + min;
+    const hours = Math.floor(randomMinutes / 60);
+    const minutes = randomMinutes % 60;
+    return { hours, minutes };
+  }
+
+  // Schedule a daily reminder at a random time
+  scheduleDailyReminder() {
+    const { hours, minutes } = this.getRandomReminderTime();
+    const rule = new schedule.RecurrenceRule();
+    rule.tz = 'Etc/UTC'; // Set to UTC; adjust if needed
+    rule.hour = hours;
+    rule.minute = minutes;
+
+    if (this.reminderJob) {
+      this.reminderJob.cancel();
+    }
+
+    this.reminderJob = schedule.scheduleJob(rule, async () => {
+      await this.bot.sendMessage(this.authorizedUserId, '⏰ Don\'t forget to log your work hours today!');
+      // Schedule the next day's reminder at a new random time
+      this.scheduleDailyReminder();
+    });
+    console.log(`Scheduled daily reminder at ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')} UTC`);
+  }
+
+  // Send greeting message to user
+  async sendGreeting() {
+    try {
+      const { cycleStart, cycleEnd } = this.commands.getCurrentPayCycle();
+      const greeting = `🤖 **Work Hours Bot is Ready!**\n\n` +
+                      `👋 Hello! Your work hours tracking bot is now active.\n\n` +
+                      `📅 **Current Pay Cycle:** ${cycleStart} to ${cycleEnd}\n\n` +
+                      `💡 **Quick Start:**\n` +
+                      `• Send a message like "Worked 6 hours today"\n` +
+                      `• Use /help to see all commands\n` +
+                      `• Use /paycycle to check current cycle hours`;
+      
+      await this.bot.sendMessage(this.authorizedUserId, greeting, { parse_mode: 'Markdown' });
+    } catch (error) {
+      console.error('Error sending greeting:', error);
+    }
   }
 
   // Configure all bot event handlers
@@ -65,6 +118,12 @@ class WorkLoggerBot {
     // Security check - only authorized user
     if (userId !== this.authorizedUserId) {
       await this.bot.sendMessage(chatId, '🚫 Unauthorized access. This bot is for personal use only.');
+      return;
+    }
+
+    // Greet on 'hi'
+    if (text.trim().toLowerCase() === 'hi') {
+      await this.sendGreeting();
       return;
     }
 
@@ -122,7 +181,7 @@ class WorkLoggerBot {
         response = this.commands.getHelpMessage();
         break;
     }
-    await this.bot.sendMessage(chatId, response);
+    await this.bot.sendMessage(chatId, response, { parse_mode: 'Markdown' });
   }
 
   // Save work entry to database and send confirmation
