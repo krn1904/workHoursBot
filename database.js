@@ -145,6 +145,24 @@ class Database {
     });
   }
 
+  // Get all work entries between two dates (inclusive)
+  async getEntriesBetween(startDate, endDate) {
+    return new Promise((resolve, reject) => {
+      const sql = `
+        SELECT * FROM work_entries
+        WHERE date BETWEEN ? AND ?
+        ORDER BY date ASC
+      `;
+      this.db.all(sql, [startDate, endDate], (err, rows) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(rows);
+        }
+      });
+    });
+  }
+
   // Close database connection gracefully
   close() {
     this.db.close((err) => {
