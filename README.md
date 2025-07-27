@@ -173,3 +173,13 @@ If you encounter issues:
 2. Review server logs for error messages
 3. Ensure all environment variables are properly set
 4. Test locally before deploying
+
+## TODO
+
+### Problem
+- Free hosting platforms (Render, Railway, Heroku, etc.) put your bot to sleep after inactivity. This causes polling bots to miss messages and, if using SQLite, lose all data on restart.
+
+### Potential Solutions
+- Use a paid hosting plan (Render, Railway, Heroku, VPS, etc.) to keep your bot always running.
+- Use a cloud database (e.g., PostgreSQL, MongoDB Atlas) for persistent data storage.
+- Run your bot on your own always-on server (home server, Raspberry Pi, etc.).
