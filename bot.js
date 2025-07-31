@@ -38,8 +38,12 @@ function setupWorkLoggerBot(bot) {
     }
 
     scheduleDailyReminder.reminderJob = schedule.scheduleJob(rule, async () => {
-      await bot.sendMessage(authorizedUserId, '⏰ Don\'t forget to log your work hours today!');
-      scheduleDailyReminder();
+      try {
+        await bot.sendMessage(authorizedUserId, '⏰ Don\'t forget to log your work hours today!');
+        scheduleDailyReminder();
+      } catch (error) {
+        console.error('Error sending reminder:', error);
+      }
     });
     console.log(`Scheduled daily reminder at ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')} UTC`);
   }
@@ -156,7 +160,8 @@ function setupWorkLoggerBot(bot) {
 
   // Attach handlers and schedule reminders
   setupHandlers();
-  sendGreeting();
+  // Removed automatic greeting to avoid network errors on cold start
+  // sendGreeting();
   scheduleDailyReminder();
 }
 
