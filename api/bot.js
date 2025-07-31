@@ -1,6 +1,10 @@
 const TelegramBot = require('node-telegram-bot-api');
 const setupWorkLoggerBot = require('../bot');
 
+// Only create and set up the bot once (on cold start)
+let bot;
+let isSetup = false;
+
 module.exports = async (req, res) => {
   try {
     // Check if required environment variables are set
@@ -8,24 +12,10 @@ module.exports = async (req, res) => {
     const authorizedUserId = process.env.AUTHORIZED_USER_ID;
     const mongoUri = process.env.MONGODB_URI;
 
-    if (!token) {
-      console.error('Missing TELEGRAM_BOT_TOKEN environment variable');
-      return res.status(500).json({ error: 'Bot token not configured' });
+    if (!token || !authorizedUserId || !mongoUri) {
+      console.error('Missing required environment variables');
+      return res.status(500).json({ error: 'Configuration error' });
     }
-
-    if (!authorizedUserId) {
-      console.error('Missing AUTHORIZED_USER_ID environment variable');
-      return res.status(500).json({ error: 'Authorized user ID not configured' });
-    }
-
-    if (!mongoUri) {
-      console.error('Missing MONGODB_URI environment variable');
-      return res.status(500).json({ error: 'MongoDB URI not configured' });
-    }
-
-    // Only create and set up the bot once (on cold start)
-    let bot;
-    let isSetup = false;
 
     if (!bot) {
       console.log('Creating new TelegramBot instance...');
@@ -50,8 +40,7 @@ module.exports = async (req, res) => {
     console.error('Error in bot function:', error);
     res.status(500).json({ 
       error: 'Internal server error', 
-      message: error.message,
-      stack: error.stack 
+      message: error.message
     });
   }
 }; 
