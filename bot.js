@@ -85,22 +85,37 @@ async function setupWorkLoggerBot(bot) {
     const chatId = msg.chat.id;
     const userId = msg.from.id;
     const text = msg.text;
+    
+    console.log(`Handling message from user ${userId} in chat ${chatId}: "${text}"`);
+    console.log(`Authorized user ID: ${authorizedUserId}`);
+    
     if (userId !== authorizedUserId) {
+      console.log('Unauthorized user, sending rejection message');
       await bot.sendMessage(chatId, '🚫 Unauthorized access. This bot is for personal use only.');
       return;
     }
+    
     if (text.trim().toLowerCase() === 'hi') {
+      console.log('Greeting message detected, sending greeting');
       await sendGreeting();
       return;
     }
+    
     if (text.startsWith('/')) {
+      console.log('Command detected:', text);
       await handleCommand(chatId, text);
       return;
     }
+    
+    console.log('Parsing message for work log...');
     const parsed = parser.parseMessage(text);
+    console.log('Parse result:', JSON.stringify(parsed, null, 2));
+    
     if (parsed.isValidWorkLog) {
+      console.log('Valid work log detected, logging entry...');
       await logWorkEntry(chatId, parsed, text);
     } else {
+      console.log('Invalid work log, sending help message');
       await bot.sendMessage(chatId, 
         '🤔 I didn\'t detect work hours in your message.\n\n' +
         '💡 Try messages like:\n' +
@@ -144,19 +159,30 @@ async function setupWorkLoggerBot(bot) {
   // Save work entry to database and send confirmation
   async function logWorkEntry(chatId, parsed, originalMessage) {
     try {
+      console.log('Attempting to log work entry to database...');
+      console.log('Entry data:', { date: parsed.date, hours: parsed.hours, tag: parsed.tag });
+      
       const result = await db.logWorkEntry(
         parsed.date,
         parsed.hours,
         parsed.tag,
         originalMessage
       );
+      
+      console.log('Database entry saved successfully:', result);
+      
       const hoursText = parser.formatHours(parsed.hours);
       const tagText = parsed.tag ? ` under '${parsed.tag}'` : '';
       const dateText = parsed.date === require('moment')().format('YYYY-MM-DD') ? 'today' : parsed.date;
       const response = `✅ Logged ${hoursText} hours for ${dateText}${tagText}.`;
+      
+      console.log('Sending confirmation message:', response);
       await bot.sendMessage(chatId, response);
+      console.log('Confirmation message sent successfully');
+      
     } catch (error) {
       console.error('Error logging work entry:', error);
+      console.log('Sending error message to user');
       await bot.sendMessage(chatId, '❌ Error saving your work log. Please try again.');
     }
   }

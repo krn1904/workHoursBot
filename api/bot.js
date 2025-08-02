@@ -31,7 +31,17 @@ module.exports = async (req, res) => {
 
     if (req.method === 'POST') {
       console.log('Processing Telegram update...');
-      await bot.processUpdate(req.body);
+      console.log('Request body:', JSON.stringify(req.body, null, 2));
+      
+      // Add debugging for the update processing
+      try {
+        await bot.processUpdate(req.body);
+        console.log('Update processed successfully');
+      } catch (updateError) {
+        console.error('Error processing update:', updateError);
+        throw updateError;
+      }
+      
       res.status(200).end();
     } else {
       res.status(405).end();
