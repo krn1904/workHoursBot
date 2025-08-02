@@ -30,7 +30,6 @@ class Database {
         serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
         socketTimeoutMS: 45000, // Close sockets after 45s of inactivity
         bufferCommands: false, // Disable mongoose buffering
-        bufferMaxEntries: 0, // Disable mongoose buffering
         maxPoolSize: 1, // Maintain up to 1 socket connection
         minPoolSize: 0, // Maintain minimum 0 socket connections
         maxIdleTimeMS: 30000, // Close connections after 30s of inactivity
