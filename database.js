@@ -14,35 +14,62 @@ const WorkEntry = mongoose.model('WorkEntry', workEntrySchema);
 class Database {
   constructor() {
     this.uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/workhoursbot';
-    this.connectToMongoDB();
+    this.connectionPromise = null;
+    this.isConnected = false;
   }
 
   async connectToMongoDB() {
     try {
-      // Check if already connected
-      if (mongoose.connection.readyState === 1) {
-        console.log('MongoDB already connected');
+      // If already connected, return immediately
+      if (this.isConnected && mongoose.connection.readyState === 1) {
         return;
       }
 
-      // Configure connection options for serverless
-      const options = {
-        serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
-        socketTimeoutMS: 45000, // Close sockets after 45s of inactivity
-        bufferCommands: false, // Disable mongoose buffering
-        bufferMaxEntries: 0, // Disable mongoose buffering
-        maxPoolSize: 1, // Maintain up to 1 socket connection
-        minPoolSize: 0, // Maintain minimum 0 socket connections
-        maxIdleTimeMS: 30000, // Close connections after 30s of inactivity
-        connectTimeoutMS: 10000, // Give up initial connection after 10s
-      };
+      // If connection is in progress, wait for it
+      if (this.connectionPromise) {
+        await this.connectionPromise;
+        return;
+      }
 
-      await mongoose.connect(this.uri, options);
-      console.log('Connected to MongoDB');
+      // Start new connection
+      this.connectionPromise = this._performConnection();
+      await this.connectionPromise;
+      this.isConnected = true;
+      this.connectionPromise = null;
     } catch (err) {
+      this.connectionPromise = null;
+      this.isConnected = false;
       console.error('MongoDB connection error:', err.message);
       throw err;
     }
+  }
+
+  async _performConnection() {
+    // Configure connection options for serverless
+    const options = {
+      serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
+      socketTimeoutMS: 45000, // Close sockets after 45s of inactivity
+      bufferCommands: false, // Disable mongoose buffering
+      maxPoolSize: 1, // Maintain up to 1 socket connection
+      minPoolSize: 0, // Maintain minimum 0 socket connections
+      maxIdleTimeMS: 30000, // Close connections after 30s of inactivity
+      connectTimeoutMS: 10000, // Give up initial connection after 10s
+    };
+
+    await mongoose.connect(this.uri, options);
+    
+    // Set up connection event listeners
+    mongoose.connection.on('disconnected', () => {
+      console.log('MongoDB disconnected');
+      this.isConnected = false;
+    });
+    
+    mongoose.connection.on('error', (err) => {
+      console.error('MongoDB connection error:', err);
+      this.isConnected = false;
+    });
+    
+    console.log('Connected to MongoDB');
   }
 
   // Insert a new work entry into the database
@@ -145,6 +172,8 @@ class Database {
   // Close database connection gracefully
   close() {
     try {
+      this.isConnected = false;
+      this.connectionPromise = null;
       mongoose.connection.close(() => {
         console.log('MongoDB connection closed');
       });
