@@ -99,20 +99,58 @@ async function processUpdateWithResponse(update) {
   // Handle bot commands
   if (text.startsWith('/')) {
     const command = text.split(' ')[0].toLowerCase();
+    const arg = text.split(' ').slice(1).join(' ');
     
-    if (command === '/help') {
+    try {
+      // Initialize database and command handler
+      const Database = require('../database');
+      const MessageParser = require('../messageParser');
+      const Commands = require('../commands');
+      
+      const db = new Database();
+      await db.connectToMongoDB();
+      const parser = new MessageParser();
+      const commands = new Commands(db, parser);
+      
+      let response;
+      
+      switch (command) {
+        case '/today':
+          response = await commands.handleToday();
+          break;
+        case '/summary':
+          response = await commands.handleSummary();
+          break;
+        case '/log':
+          response = await commands.handleLog();
+          break;
+        case '/category':
+          response = await commands.handleCategory(arg);
+          break;
+        case '/paycycle':
+          response = await commands.handlePayCycle();
+          break;
+        case '/help':
+          response = commands.getHelpMessage();
+          break;
+        default:
+          response = `❌ Unknown command: ${command}\n\nUse /help to see available commands.`;
+          break;
+      }
+      
       return {
         chatId,
-        text: `🤖 **Work Hours Tracker Bot**\n\n📝 **Log Work Hours:**\nJust send a natural message like:\n• "Worked 6 hours today"\n• "5.5 hrs on freelance project"\n• "Yesterday I did 3 hours of coding"\n\n📊 **Commands:**\n• \`/today\` - Show today's logged hours\n• \`/summary\` - Weekly summary\n• \`/log\` - Recent entries\n• \`/paycycle\` - Current pay cycle summary\n• \`/help\` - Show this help\n\n💡 The bot automatically detects hours and dates from your messages!`,
+        text: response,
         parseMode: 'Markdown'
       };
+      
+    } catch (error) {
+      console.error('Error processing command:', error);
+      return {
+        chatId,
+        text: '❌ Error processing command. Please try again.'
+      };
     }
-    
-    // Other commands not yet implemented in webhook mode
-    return {
-      chatId,
-      text: 'Command processing not yet implemented in webhook mode. Use /help for available options.'
-    };
   }
 
   // Parse message for work log entries
