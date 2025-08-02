@@ -232,13 +232,13 @@ class Commands {
            `• "Worked 6 hours today"\n` +
            `• "5.5 hrs on freelance"\n` +
            `• "Yesterday I did 3 hours on project X"\n\n` +
-           `⚡ *Commands:*\n` +
-           `• /summary - Weekly and monthly totals\n` +
-           `• /today - Today's logged hours\n` +
-           `• /log - Last 5 entries\n` +
+           `📊 *Commands:*\n` +
+           `• /today - Show today's logged hours\n` +
+           `• /summary - Weekly summary\n` +
+           `• /log - Recent entries\n` +
+           `• /paycycle - Current pay cycle summary\n` +
            `• /category <tag> - Hours for specific category\n` +
-           `• /paycycle - Hours for current pay cycle (fortnightly)\n` +
-           `• /help - Show this message`;
+           `• /help - Show this help`;
   }
 }
 
