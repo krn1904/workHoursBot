@@ -1,177 +1,184 @@
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
+const mongoose = require('mongoose');
 
-// Database class for managing SQLite operations
+// Define the schema for work entries
+const workEntrySchema = new mongoose.Schema({
+  date: { type: String, required: true }, // YYYY-MM-DD
+  hours: { type: Number, required: true },
+  tag: { type: String },
+  raw_message: { type: String, required: true },
+  timestamp: { type: Date, default: Date.now }
+});
+
+const WorkEntry = mongoose.model('WorkEntry', workEntrySchema);
+
 class Database {
   constructor() {
-    // Use environment variable or default path for database file
-    const dbPath = process.env.DATABASE_PATH || './work_hours.db';
-    // Initialize SQLite database connection
-    this.db = new sqlite3.Database(dbPath, (err) => {
-      if (err) {
-        console.error('Error opening database:', err.message);
-      } else {
-        console.log('Connected to SQLite database');
-        this.initializeDatabase();
-      }
-    });
+    this.uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/workhoursbot';
+    this.connectionPromise = null;
+    this.isConnected = false;
   }
 
-  // Create the work_entries table if it doesn't exist
-  initializeDatabase() {
-    const createTableSQL = `
-      CREATE TABLE IF NOT EXISTS work_entries (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        date TEXT NOT NULL,
-        hours REAL NOT NULL,
-        tag TEXT,
-        raw_message TEXT NOT NULL,
-        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-      )
-    `;
-
-    // Execute table creation SQL
-    this.db.run(createTableSQL, (err) => {
-      if (err) {
-        console.error('Error creating table:', err.message);
-      } else {
-        console.log('Database initialized successfully');
+  async connectToMongoDB() {
+    try {
+      // If already connected, return immediately
+      if (this.isConnected && mongoose.connection.readyState === 1) {
+        return;
       }
+
+      // If connection is in progress, wait for it to prevent race conditions
+      if (this.connectionPromise) {
+        await this.connectionPromise;
+        return;
+      }
+
+      // Start new connection
+      this.connectionPromise = this._performConnection();
+      await this.connectionPromise;
+      this.isConnected = true;
+      this.connectionPromise = null;
+    } catch (err) {
+      this.connectionPromise = null;
+      this.isConnected = false;
+      console.error('MongoDB connection error:', err.message);
+      throw err;
+    }
+  }
+
+  async _performConnection() {
+    // Configure connection options optimized for serverless environments
+    const options = {
+      serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
+      socketTimeoutMS: 45000, // Close sockets after 45s of inactivity
+      bufferCommands: false, // Disable mongoose buffering for immediate operations
+      maxPoolSize: 1, // Maintain up to 1 socket connection
+      minPoolSize: 0, // Maintain minimum 0 socket connections
+      maxIdleTimeMS: 30000, // Close connections after 30s of inactivity
+      connectTimeoutMS: 10000, // Give up initial connection after 10s
+    };
+
+    await mongoose.connect(this.uri, options);
+    
+    // Set up connection event listeners to track state
+    mongoose.connection.on('disconnected', () => {
+      this.isConnected = false;
     });
+    
+    mongoose.connection.on('error', (err) => {
+      console.error('MongoDB connection error:', err);
+      this.isConnected = false;
+    });
+    
+    console.log('Connected to MongoDB');
   }
 
   // Insert a new work entry into the database
   async logWorkEntry(date, hours, tag, rawMessage) {
-    return new Promise((resolve, reject) => {
-      const sql = `
-        INSERT INTO work_entries (date, hours, tag, raw_message)
-        VALUES (?, ?, ?, ?)
-      `;
+    try {
+      // Ensure connection before operation
+      await this.connectToMongoDB();
       
-      // Use parameterized query to prevent SQL injection
-      this.db.run(sql, [date, hours, tag, rawMessage], function(err) {
-        if (err) {
-          reject(err);
-        } else {
-          resolve({ id: this.lastID, date, hours, tag });
-        }
-      });
-    });
+      const entry = new WorkEntry({ date, hours, tag, raw_message: rawMessage });
+      await entry.save();
+      return {
+        id: entry._id,
+        date: entry.date,
+        hours: entry.hours,
+        tag: entry.tag,
+      };
+    } catch (error) {
+      console.error('Error saving work entry:', error);
+      throw error;
+    }
   }
 
   // Get all work entries for a specific date
   async getTodayEntries(date) {
-    return new Promise((resolve, reject) => {
-      const sql = `
-        SELECT * FROM work_entries 
-        WHERE date = ? 
-        ORDER BY timestamp DESC
-      `;
-      
-      // Return all entries for the specified date
-      this.db.all(sql, [date], (err, rows) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(rows);
-        }
-      });
-    });
+    try {
+      await this.connectToMongoDB();
+      return await WorkEntry.find({ date }).sort({ timestamp: -1 }).lean();
+    } catch (error) {
+      console.error('Error getting today entries:', error);
+      throw error;
+    }
   }
 
   // Get the most recent work entries (for /log command)
   async getLastEntries(limit = 5) {
-    return new Promise((resolve, reject) => {
-      const sql = `
-        SELECT * FROM work_entries 
-        ORDER BY timestamp DESC 
-        LIMIT ?
-      `;
-      
-      // Return limited number of recent entries
-      this.db.all(sql, [limit], (err, rows) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(rows);
-        }
-      });
-    });
+    try {
+      await this.connectToMongoDB();
+      return await WorkEntry.find().sort({ timestamp: -1 }).limit(limit).lean();
+    } catch (error) {
+      console.error('Error getting last entries:', error);
+      throw error;
+    }
   }
 
   // Calculate total hours worked between two dates (for weekly/monthly summaries)
   async getWeeklyTotal(startDate, endDate) {
-    return new Promise((resolve, reject) => {
-      const sql = `
-        SELECT SUM(hours) as total_hours, COUNT(*) as entries
-        FROM work_entries 
-        WHERE date BETWEEN ? AND ?
-      `;
-      
-      // Return aggregated data for date range
-      this.db.get(sql, [startDate, endDate], (err, row) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve({
-            totalHours: row.total_hours || 0,
-            entries: row.entries || 0
-          });
-        }
-      });
-    });
+    try {
+      await this.connectToMongoDB();
+      const result = await WorkEntry.aggregate([
+        { $match: { date: { $gte: startDate, $lte: endDate } } },
+        { $group: {
+          _id: null,
+          total_hours: { $sum: '$hours' },
+          entries: { $sum: 1 }
+        }}
+      ]);
+      return {
+        totalHours: result[0]?.total_hours || 0,
+        entries: result[0]?.entries || 0
+      };
+    } catch (error) {
+      console.error('Error getting weekly total:', error);
+      throw error;
+    }
   }
 
   // Get total hours for a specific category/tag
   async getCategoryTotal(tag) {
-    return new Promise((resolve, reject) => {
-      const sql = `
-        SELECT SUM(hours) as total_hours, COUNT(*) as entries
-        FROM work_entries 
-        WHERE tag LIKE ?
-      `;
-      
-      // Use LIKE for partial tag matching
-      this.db.get(sql, [`%${tag}%`], (err, row) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve({
-            totalHours: row.total_hours || 0,
-            entries: row.entries || 0
-          });
-        }
-      });
-    });
+    try {
+      await this.connectToMongoDB();
+      const result = await WorkEntry.aggregate([
+        { $match: { tag: { $regex: tag, $options: 'i' } } },
+        { $group: {
+          _id: null,
+          total_hours: { $sum: '$hours' },
+          entries: { $sum: 1 }
+        }}
+      ]);
+      return {
+        totalHours: result[0]?.total_hours || 0,
+        entries: result[0]?.entries || 0
+      };
+    } catch (error) {
+      console.error('Error getting category total:', error);
+      throw error;
+    }
   }
 
   // Get all work entries between two dates (inclusive)
   async getEntriesBetween(startDate, endDate) {
-    return new Promise((resolve, reject) => {
-      const sql = `
-        SELECT * FROM work_entries
-        WHERE date BETWEEN ? AND ?
-        ORDER BY date ASC
-      `;
-      this.db.all(sql, [startDate, endDate], (err, rows) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(rows);
-        }
-      });
-    });
+    try {
+      await this.connectToMongoDB();
+      return await WorkEntry.find({ date: { $gte: startDate, $lte: endDate } }).sort({ date: 1 }).lean();
+    } catch (error) {
+      console.error('Error getting entries between dates:', error);
+      throw error;
+    }
   }
 
   // Close database connection gracefully
   close() {
-    this.db.close((err) => {
-      if (err) {
-        console.error('Error closing database:', err.message);
-      } else {
-        console.log('Database connection closed');
-      }
-    });
+    try {
+      this.isConnected = false;
+      this.connectionPromise = null;
+      mongoose.connection.close(() => {
+        console.log('MongoDB connection closed');
+      });
+    } catch (error) {
+      console.error('Error closing connection:', error);
+    }
   }
 }
 

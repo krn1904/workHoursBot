@@ -38,9 +38,11 @@ class MessageParser {
     }
 
     // Parse date information
+    let messageWithoutDate = message;
     if (this.yesterdayRegex.test(message)) {
       // Handle "yesterday" keyword
       result.date = moment().subtract(1, 'day').format('YYYY-MM-DD');
+      messageWithoutDate = message.replace(this.yesterdayRegex, '').trim();
     } else {
       // Look for specific date formats
       const dateMatch = message.match(this.dateRegex);
@@ -59,12 +61,14 @@ class MessageParser {
         }
         if (parsedDate && parsedDate.isValid()) {
           result.date = parsedDate.format('YYYY-MM-DD');
+          // Remove the date string from the message for tag extraction
+          messageWithoutDate = message.replace(dateStr, '').trim();
         }
       }
     }
 
-    // Extract project/category tags from message
-    result.tag = this.extractTag(message);
+    // Extract project/category tags from message (after removing date)
+    result.tag = this.extractTag(messageWithoutDate);
 
     return result;
   }
