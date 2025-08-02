@@ -23,7 +23,7 @@ module.exports = async (req, res) => {
       
       if (!isSetup) {
         console.log('Setting up bot handlers...');
-        setupWorkLoggerBot(bot);
+        await setupWorkLoggerBot(bot);
         isSetup = true;
         console.log('Bot setup completed successfully');
       }

@@ -4,7 +4,7 @@ const Commands = require('./commands');
 const schedule = require('node-schedule');
 
 // This function attaches all handlers and logic to a provided TelegramBot instance
-function setupWorkLoggerBot(bot) {
+async function setupWorkLoggerBot(bot) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const authorizedUserId = parseInt(process.env.AUTHORIZED_USER_ID);
   if (!token || !authorizedUserId) {
@@ -12,6 +12,9 @@ function setupWorkLoggerBot(bot) {
   }
 
   const db = new Database();
+  // Ensure database connection is established before proceeding
+  await db.connectToMongoDB();
+  
   const parser = new MessageParser();
   const commands = new Commands(db, parser);
 
