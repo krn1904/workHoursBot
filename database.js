@@ -60,7 +60,6 @@ class Database {
     
     // Set up connection event listeners
     mongoose.connection.on('disconnected', () => {
-      console.log('MongoDB disconnected');
       this.isConnected = false;
     });
     
@@ -68,8 +67,6 @@ class Database {
       console.error('MongoDB connection error:', err);
       this.isConnected = false;
     });
-    
-    console.log('Connected to MongoDB');
   }
 
   // Insert a new work entry into the database
