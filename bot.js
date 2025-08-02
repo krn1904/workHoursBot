@@ -42,7 +42,7 @@ async function setupWorkLoggerBot(bot) {
 
     scheduleDailyReminder.reminderJob = schedule.scheduleJob(rule, async () => {
       try {
-        await bot.sendMessage(authorizedUserId, '⏰ Don\'t forget to log your work hours today!');
+        await sendMessageWithLogging(authorizedUserId, '⏰ Don\'t forget to log your work hours today!');
         scheduleDailyReminder();
       } catch (error) {
         console.error('Error sending reminder:', error);
@@ -62,9 +62,27 @@ async function setupWorkLoggerBot(bot) {
         `• Send a message like "Worked 6 hours today"\n` +
         `• Use /help to see all commands\n` +
         `• Use /paycycle to check current cycle hours`;
-      await bot.sendMessage(authorizedUserId, greeting, { parse_mode: 'Markdown' });
+      await sendMessageWithLogging(authorizedUserId, greeting, { parse_mode: 'Markdown' });
     } catch (error) {
       console.error('Error sending greeting:', error);
+    }
+  }
+
+  // Helper function to send messages with error handling and logging
+  async function sendMessageWithLogging(chatId, message, options = {}) {
+    try {
+      console.log(`Attempting to send message to chat ${chatId}:`, message);
+      const result = await bot.sendMessage(chatId, message, options);
+      console.log('Message sent successfully, result:', result);
+      return result;
+    } catch (error) {
+      console.error('Error sending message:', error);
+      console.error('Error details:', {
+        code: error.code,
+        message: error.message,
+        response: error.response?.body
+      });
+      throw error;
     }
   }
 
@@ -75,7 +93,7 @@ async function setupWorkLoggerBot(bot) {
         await handleMessage(msg);
       } catch (error) {
         console.error('Error handling message:', error);
-        bot.sendMessage(msg.chat.id, '❌ An error occurred. Please try again.');
+        sendMessageWithLogging(msg.chat.id, '❌ An error occurred. Please try again.');
       }
     });
   }
@@ -91,7 +109,7 @@ async function setupWorkLoggerBot(bot) {
     
     if (userId !== authorizedUserId) {
       console.log('Unauthorized user, sending rejection message');
-      await bot.sendMessage(chatId, '🚫 Unauthorized access. This bot is for personal use only.');
+      await sendMessageWithLogging(chatId, '🚫 Unauthorized access. This bot is for personal use only.');
       return;
     }
     
@@ -116,7 +134,7 @@ async function setupWorkLoggerBot(bot) {
       await logWorkEntry(chatId, parsed, text);
     } else {
       console.log('Invalid work log, sending help message');
-      await bot.sendMessage(chatId, 
+      await sendMessageWithLogging(chatId, 
         '🤔 I didn\'t detect work hours in your message.\n\n' +
         '💡 Try messages like:\n' +
         '• "Worked 6 hours today"\n' +
@@ -153,7 +171,7 @@ async function setupWorkLoggerBot(bot) {
         response = commands.getHelpMessage();
         break;
     }
-    await bot.sendMessage(chatId, response, { parse_mode: 'Markdown' });
+    await sendMessageWithLogging(chatId, response, { parse_mode: 'Markdown' });
   }
 
   // Save work entry to database and send confirmation
@@ -177,13 +195,13 @@ async function setupWorkLoggerBot(bot) {
       const response = `✅ Logged ${hoursText} hours for ${dateText}${tagText}.`;
       
       console.log('Sending confirmation message:', response);
-      await bot.sendMessage(chatId, response);
+      await sendMessageWithLogging(chatId, response);
       console.log('Confirmation message sent successfully');
       
     } catch (error) {
       console.error('Error logging work entry:', error);
       console.log('Sending error message to user');
-      await bot.sendMessage(chatId, '❌ Error saving your work log. Please try again.');
+      await sendMessageWithLogging(chatId, '❌ Error saving your work log. Please try again.');
     }
   }
 
