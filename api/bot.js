@@ -17,6 +17,7 @@ module.exports = async (req, res) => {
       return res.status(500).json({ error: 'Configuration error' });
     }
 
+    // Initialize bot instance only once for serverless efficiency
     if (!bot) {
       console.log('Creating new TelegramBot instance...');
       bot = new TelegramBot(token);
@@ -31,9 +32,12 @@ module.exports = async (req, res) => {
 
     if (req.method === 'POST') {
       try {
+        // Process the Telegram update and get response
         const response = await processUpdateWithResponse(req.body);
         
         if (response) {
+          // Send response directly back to Telegram via webhook response
+          // This avoids outbound HTTP requests that can fail in serverless environments
           return res.status(200).json({
             method: 'sendMessage',
             chat_id: response.chatId,
@@ -41,6 +45,7 @@ module.exports = async (req, res) => {
             parse_mode: response.parseMode || undefined
           });
         } else {
+          // No response needed, acknowledge receipt
           return res.status(200).json({ ok: true });
         }
         
@@ -62,6 +67,7 @@ module.exports = async (req, res) => {
 };
 
 // Process update and return response instead of sending directly
+// This approach works better in serverless environments where outbound connections may be restricted
 async function processUpdateWithResponse(update) {
   if (!update.message) {
     return null;
@@ -73,6 +79,7 @@ async function processUpdateWithResponse(update) {
   const text = msg.text;
   const authorizedUserId = parseInt(process.env.AUTHORIZED_USER_ID);
 
+  // Check if user is authorized to use this bot
   if (userId !== authorizedUserId) {
     return {
       chatId,
@@ -80,6 +87,7 @@ async function processUpdateWithResponse(update) {
     };
   }
 
+  // Handle greeting message
   if (text.trim().toLowerCase() === 'hi') {
     return {
       chatId,
@@ -88,6 +96,7 @@ async function processUpdateWithResponse(update) {
     };
   }
 
+  // Handle bot commands
   if (text.startsWith('/')) {
     const command = text.split(' ')[0].toLowerCase();
     
@@ -99,19 +108,21 @@ async function processUpdateWithResponse(update) {
       };
     }
     
+    // Other commands not yet implemented in webhook mode
     return {
       chatId,
       text: 'Command processing not yet implemented in webhook mode. Use /help for available options.'
     };
   }
 
-  // Parse message for work log
+  // Parse message for work log entries
   const MessageParser = require('../messageParser');
   const parser = new MessageParser();
   const parsed = parser.parseMessage(text);
 
   if (parsed.isValidWorkLog) {
     try {
+      // Save work entry to database
       const Database = require('../database');
       const db = new Database();
       await db.connectToMongoDB();
@@ -123,6 +134,7 @@ async function processUpdateWithResponse(update) {
         text
       );
       
+      // Format confirmation message
       const hoursText = parser.formatHours(parsed.hours);
       const tagText = parsed.tag ? ` under '${parsed.tag}'` : '';
       const dateText = parsed.date === require('moment')().format('YYYY-MM-DD') ? 'today' : parsed.date;
@@ -140,6 +152,7 @@ async function processUpdateWithResponse(update) {
       };
     }
   } else {
+    // Message doesn't contain valid work log, provide help
     return {
       chatId,
       text: `🤔 I didn't detect work hours in your message.\n\n💡 Try messages like:\n• "Worked 6 hours today"\n• "5.5 hrs on freelance"\n• "Yesterday I did 3 hours"\n\nOr use /help for more information.`

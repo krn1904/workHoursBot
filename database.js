@@ -25,7 +25,7 @@ class Database {
         return;
       }
 
-      // If connection is in progress, wait for it
+      // If connection is in progress, wait for it to prevent race conditions
       if (this.connectionPromise) {
         await this.connectionPromise;
         return;
@@ -45,11 +45,11 @@ class Database {
   }
 
   async _performConnection() {
-    // Configure connection options for serverless
+    // Configure connection options optimized for serverless environments
     const options = {
       serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
       socketTimeoutMS: 45000, // Close sockets after 45s of inactivity
-      bufferCommands: false, // Disable mongoose buffering
+      bufferCommands: false, // Disable mongoose buffering for immediate operations
       maxPoolSize: 1, // Maintain up to 1 socket connection
       minPoolSize: 0, // Maintain minimum 0 socket connections
       maxIdleTimeMS: 30000, // Close connections after 30s of inactivity
@@ -58,7 +58,7 @@ class Database {
 
     await mongoose.connect(this.uri, options);
     
-    // Set up connection event listeners
+    // Set up connection event listeners to track state
     mongoose.connection.on('disconnected', () => {
       this.isConnected = false;
     });
@@ -67,6 +67,8 @@ class Database {
       console.error('MongoDB connection error:', err);
       this.isConnected = false;
     });
+    
+    console.log('Connected to MongoDB');
   }
 
   // Insert a new work entry into the database
