@@ -1,72 +1,88 @@
 # Telegram Work Hours Logger Bot
 
-A sophisticated Node.js Telegram bot that allows you to log your daily work hours through natural language messages and provides comprehensive analytics and summaries. Designed for serverless deployment with MongoDB storage.
+A Node.js Telegram bot that allows you to log your daily work hours through natural language messages and provides summaries and analytics.
 
-## ✨ Features
+## Features
 
-### 📝 **Natural Language Logging**
-- Log hours with messages like "Worked 6 hours today" or "5.5 hrs on freelance"
-- Smart parsing understands various time formats (6h, 5.5 hours, 3 hrs, 8.25h)
-- No complex forms or rigid syntax required
+- 📝 **Natural Language Logging**: Log hours with messages like "Worked 6 hours today" or "5.5 hrs on freelance"
+- 🗓️ **Date Recognition**: Supports "today", "yesterday", and specific dates
+- 🏷️ **Automatic Tagging**: Detects project names and categories from your messages
+- 📊 **Analytics**: Get weekly/monthly summaries and category breakdowns
+- 🔒 **Single User Security**: Only accepts messages from your authorized user ID
+- 💾 **SQLite Storage**: Lightweight local database storage
+- ⚡ **Real-time Responses**: Instant confirmation when logging work hours
+- 🔍 **Smart Parsing**: Understands various time formats (6h, 5.5 hours, 3 hrs)
+- 📈 **Progress Tracking**: Monitor your work patterns over time
+- 🏃 **Quick Commands**: Fast access to summaries and recent entries
+- 🌐 **Cloud Ready**: Easy deployment to Railway, Render, or Fly.io
+- 📱 **Mobile Friendly**: Works seamlessly on Telegram mobile app
+- 🔄 **Automatic Timestamps**: Every entry includes when it was logged
+- 📋 **Entry History**: View your last 5 work entries with `/log`
+- 🎯 **Category Filtering**: Track hours by specific projects or clients
+- 📅 **Flexible Dating**: Log work for any day, not just today
+- 💬 **Conversational Interface**: No complex forms, just natural messages
+- 🛡️ **Error Handling**: Graceful error messages and recovery
+- 🚀 **Zero Configuration**: Works out of the box after environment setup
+- 📊 **Multiple Time Periods**: Weekly and monthly summaries available
+- 🔐 **Privacy First**: All data stored locally or on your chosen hosting platform
 
-### 🗓️ **Flexible Date Recognition**
-- Supports "today", "yesterday", and specific dates (12/25, 2023-12-25)
-- Multiple date formats accepted (MM/DD, DD/MM, YYYY-MM-DD)
-- Automatic date validation and reasonable range checking
+## Commands
 
-### 🏷️ **Intelligent Tagging**
-- Automatic detection of project names and categories from your messages
-- Extract tags from context: "coding", "client work", "project X"
-- Manual tag filtering with `/category` command
+### Basic Commands
+- `/summary` - Weekly and monthly totals with day breakdown
+- `/today` - Today's logged hours and individual entries
+- `/log` - Last 5 work entries with timestamps
+- `/category <tag>` - Hours for specific category/project
+- `/paycycle` - Hours for current pay cycle (bi-weekly)
+- `/help` - Complete help message and usage guide
 
-### 📊 **Comprehensive Analytics**
-- Weekly and monthly summaries with day-type breakdown
-- Pay cycle tracking (bi-weekly periods)
-- Category-based hour filtering and totals
-- Entry history with timestamps
+### Admin Commands
+- `/stats` - Database statistics and overview
+- `/validate` - Check database integrity and health
+- `/reset confirm` - Reset database (⚠️ DESTRUCTIVE - requires confirmation)
+- `/backup` - Create backup of all data
 
-### 🔒 **Security & Privacy**
-- Single user authorization (only accepts messages from your user ID)
-- All data stored in your private MongoDB database
-- No third-party data sharing
+### 🔄 Database Reset Feature
 
-### ⚡ **Serverless Optimized**
-- Webhook-based deployment for reliability
-- MongoDB cloud storage for persistence
-- Optimized for Vercel, Railway, and similar platforms
-- No polling required - event-driven responses
+The bot includes a secure database reset functionality for starting fresh:
 
-### 💬 **User Experience**
-- Real-time confirmation messages
-- Emoji-rich, readable responses
-- Error handling with helpful guidance
-- Mobile-friendly Telegram interface
+#### How to Reset
+1. **Check current data**: Use `/stats` to see what will be deleted
+2. **Initiate reset**: Send `/reset` (without confirm) to see warning
+3. **Confirm reset**: Send `/reset confirm` to proceed
 
-## 🤖 Commands
+#### Safety Features
+- ⚠️ **Confirmation required**: Must type `/reset confirm` exactly
+- 💾 **Automatic backup**: Creates backup before deletion
+- 📊 **Data preview**: Shows what will be deleted
+- 🚫 **No accidental resets**: Won't work without explicit confirmation
 
-| Command | Description | Example Usage |
-|---------|-------------|---------------|
-| `/summary` | Weekly and monthly totals with day breakdown | Shows current week/month hours |
-| `/today` | Today's logged hours and individual entries | All work logged for today |
-| `/log` | Last 5 work entries with timestamps | Recent work history |
-| `/category <tag>` | Total hours for specific category/project | `/category coding` |
-| `/paycycle` | Hours for current pay cycle (bi-weekly) | Current 14-day period totals |
-| `/help` | Complete help message and usage guide | Available commands and tips |
+#### Use Cases
+- 🆕 **Fresh start**: Beginning new job or project
+- 🧪 **Testing**: Clearing test data
+- 🧹 **Data cleanup**: Removing old or incorrect entries
+- 🔄 **Migration**: Preparing for data import
 
-## 💬 Example Messages
-
-The bot understands natural language and extracts meaningful information:
-
+**Example Reset Flow:**
 ```
-✅ "Worked 6 hours today"
-✅ "5.5 hrs on freelance project"
-✅ "Yesterday I did 3 hours on project X"
-✅ "8.25 hours coding on 12/15"
-✅ "2.5 hours meeting with client ABC"
-✅ "4h documentation work yesterday"
+You: /reset
+Bot: Shows warning with current data stats
+
+You: /reset confirm  
+Bot: ✅ Database reset complete! Deleted X entries, backup created.
 ```
 
-## 🚀 Quick Setup
+📖 **For detailed reset instructions, see [RESET_GUIDE.md](RESET_GUIDE.md)**
+
+## Example Messages
+
+- "Worked 6 hours today"
+- "5.5 hrs on freelance"
+- "Yesterday I did 3 hours on project X"
+- "8 hours coding today"
+- "2.5 hours meeting with client"
+
+## Setup Instructions
 
 ### 1. Create a Telegram Bot
 
@@ -79,58 +95,52 @@ The bot understands natural language and extracts meaningful information:
 1. Message [@userinfobot](https://t.me/userinfobot) on Telegram
 2. Note down your user ID number
 
-### 3. Set Up MongoDB Database
+### 3. Environment Configuration
 
-Choose one of these options:
+1. Copy `.env.example` to `.env`:
+   ```bash
+   cp .env.example .env
+   ```
 
-#### Option A: MongoDB Atlas (Recommended - Free Tier Available)
-1. Create account at [MongoDB Atlas](https://cloud.mongodb.com)
-2. Create a new cluster (free tier is sufficient)
-3. Create database user with read/write permissions
-4. Get connection string (looks like `mongodb+srv://...`)
+2. Edit `.env` with your values:
+   ```env
+   TELEGRAM_BOT_TOKEN=your_bot_token_here
+   AUTHORIZED_USER_ID=your_telegram_user_id_here
+   PORT=3000
+   NODE_ENV=production
+   DATABASE_PATH=./work_hours.db
+   ```
 
-#### Option B: Local MongoDB (Development Only)
-1. Install MongoDB locally
-2. Use connection string: `mongodb://localhost:27017/workhoursbot`
+### 4. Local Development
 
-### 4. Environment Configuration
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
 
-Set these environment variables in your deployment platform:
+2. Start the bot:
+   ```bash
+   npm start
+   ```
 
-```env
-TELEGRAM_BOT_TOKEN=your_bot_token_here
-AUTHORIZED_USER_ID=your_telegram_user_id_here
-MONGODB_URI=your_mongodb_connection_string
-```
+3. Message your bot on Telegram to test
 
-## 🌐 Deployment Options
-
-### Deploy to Vercel (Recommended)
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/yourusername/telegram-work-logger)
-
-1. Fork this repository
-2. Connect to [Vercel](https://vercel.com)
-3. Add environment variables in Vercel dashboard
-4. Deploy automatically
-5. Set webhook URL in BotFather: `https://your-app.vercel.app/api/bot`
+## Deployment
 
 ### Deploy to Railway
 
-1. Fork this repository
+1. Fork/clone this repository
 2. Connect your GitHub repo to [Railway](https://railway.app)
 3. Add environment variables in Railway dashboard
 4. Deploy automatically
-5. Set webhook URL in BotFather
 
 ### Deploy to Render
 
-1. Fork this repository
+1. Fork/clone this repository
 2. Create a new Web Service on [Render](https://render.com)
 3. Connect your GitHub repo
 4. Add environment variables
 5. Deploy
-6. Set webhook URL in BotFather
 
 ### Deploy to Fly.io
 
@@ -138,214 +148,82 @@ MONGODB_URI=your_mongodb_connection_string
 2. Run `fly launch` in project directory
 3. Set environment variables: `fly secrets set TELEGRAM_BOT_TOKEN=your_token`
 4. Deploy: `fly deploy`
-5. Set webhook URL in BotFather
 
-## 🗄️ Database Schema
+## Database Schema
 
-The bot uses MongoDB with the following document structure:
+The bot uses SQLite with a simple schema:
 
-```javascript
-{
-  _id: ObjectId("..."),           // MongoDB document ID
-  date: "2024-01-15",            // Work date (YYYY-MM-DD)
-  hours: 6.5,                    // Hours worked (decimal)
-  tag: "coding",                 // Project/category tag (optional)
-  raw_message: "Worked 6.5 hours coding today", // Original message
-  timestamp: ISODate("2024-01-15T14:30:00Z")    // When logged
-}
+```sql
+CREATE TABLE work_entries (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  date TEXT NOT NULL,           -- YYYY-MM-DD format
+  hours REAL NOT NULL,          -- Decimal hours (e.g., 5.5)
+  tag TEXT,                     -- Optional category/project tag
+  raw_message TEXT NOT NULL,    -- Original message from user
+  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+);
 ```
 
-### Indexes
-- `date`: For efficient date-range queries
-- `tag`: For category filtering
-- `timestamp`: For recent entries sorting
-
-## 📁 Project Structure
+## Project Structure
 
 ```
 ├── api/
-│   ├── bot.js              # Vercel webhook handler
-│   ├── test.js             # Test endpoint
-│   └── test-post.js        # POST test endpoint
-├── bot.js                  # Core bot setup and configuration
-├── database.js             # MongoDB operations and connection management
-├── messageParser.js        # Natural language parsing logic
-├── commands.js             # Bot command handlers and responses
-├── index.js                # Local development entry point
-├── package.json            # Dependencies and scripts
-├── vercel.json             # Vercel deployment configuration
-└── README.md               # This file
+│   └── bot.js            # Vercel webhook handler for serverless deployment
+├── bot.js                # Core bot setup and configuration
+├── database.js           # MongoDB operations and connection management
+├── messageParser.js      # Natural language parsing logic
+├── commands.js           # Bot command handlers and responses
+├── index.js              # Local development entry point
+├── package.json          # Dependencies and scripts
+├── vercel.json           # Vercel deployment configuration
+├── .env.example          # Environment variables template
+├── README.md             # Main documentation
+└── RESET_GUIDE.md        # Database reset functionality guide
 ```
 
-## 🔧 Local Development
-
-### Prerequisites
-- Node.js 16+ 
-- MongoDB (local or cloud)
-- Telegram Bot Token
-- Your Telegram User ID
-
-### Setup Steps
-
-1. **Clone and Install**
-   ```bash
-   git clone <repository-url>
-   cd telegram-work-logger
-   npm install
-   ```
-
-2. **Environment Setup**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your values
-   ```
-
-3. **Environment Variables**
-   ```env
-   TELEGRAM_BOT_TOKEN=your_bot_token_here
-   AUTHORIZED_USER_ID=your_telegram_user_id_here
-   MONGODB_URI=mongodb://localhost:27017/workhoursbot
-   # or MongoDB Atlas connection string
-   ```
-
-4. **Start Development Server**
-   ```bash
-   npm run dev
-   ```
-
-5. **Test the Bot**
-   - Message your bot on Telegram
-   - Send "hi" to test basic functionality
-   - Try logging hours: "Worked 5 hours today"
-
-## 🚨 Troubleshooting
-
-### Bot Not Responding
-- ✅ Verify `TELEGRAM_BOT_TOKEN` is correct
-- ✅ Check `AUTHORIZED_USER_ID` matches your Telegram user ID
-- ✅ Ensure webhook URL is set correctly in BotFather
-- ✅ Check server logs for error messages
-
-### Database Connection Issues
-- ✅ Verify `MONGODB_URI` connection string is correct
-- ✅ Check database user has read/write permissions
-- ✅ Ensure network access is allowed (Atlas IP whitelist)
-- ✅ Test connection from your deployment platform
-
-### Deployment Issues
-- ✅ All environment variables set on hosting platform
-- ✅ Webhook URL accessible and returning 200 status
-- ✅ Check platform logs for detailed error messages
-- ✅ Verify serverless function timeout settings
-
-### Data Not Persisting
-- ✅ Using MongoDB (not SQLite) for persistent storage
-- ✅ Database connection string includes authentication
-- ✅ Write permissions configured correctly
-- ✅ Check for connection timeout issues
-
-## 🔒 Security Considerations
-
-- **Single User Access**: Only your Telegram user ID can interact with the bot
-- **Environment Variables**: Store sensitive data in platform environment variables
-- **Database Security**: Use strong passwords and restricted network access
-- **HTTPS**: All webhook communication uses HTTPS encryption
-- **No Data Sharing**: All work data stays in your private database
-
-## 🛠️ Advanced Configuration
-
-### Pay Cycle Customization
-
-To change the pay cycle start date, edit `commands.js`:
-
-```javascript
-const PAY_CYCLE_START = '2024-07-21'; // Must be a Monday
-```
-
-### Date Format Preferences
-
-The parser supports multiple formats. To prioritize specific formats, modify the patterns in `messageParser.js`.
-
-### Custom Categories
-
-The bot automatically extracts tags, but you can enhance detection by adding keywords to `messageParser.js`:
-
-```javascript
-this.tagKeywords = [
-  'on', 'for', 'project', 'client', 'freelance', 'work', 'task',
-  'meeting', 'coding', 'development', 'design', 'research',
-  // Add your custom keywords here
-];
-```
-
-## 📈 Analytics Features
-
-### Weekly Summaries
-- Monday-Sunday hour totals
-- Breakdown by weekdays, Saturday, Sunday
-- Entry count for the period
-
-### Monthly Summaries  
-- Full calendar month totals
-- Day-type breakdown
-- Historical comparison capability
-
-### Pay Cycle Tracking
-- Bi-weekly period calculations
-- Configurable start date
-- Perfect for freelancers and contractors
-
-### Category Analysis
-- Total hours per project/tag
-- Cross-project time comparison
-- Client billing summaries
-
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
-2. Create a feature branch: `git checkout -b feature-name`
-3. Make your changes with tests
-4. Commit changes: `git commit -am 'Add feature'`
-5. Push to branch: `git push origin feature-name`
-6. Submit a pull request
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
 
-### Development Guidelines
-- Follow existing code style and commenting patterns
-- Add JSDoc comments for new functions
-- Test changes thoroughly with real Telegram messages
-- Update documentation for new features
-
-## 📄 License
+## License
 
 MIT License - feel free to modify and use for your own projects.
 
-## 🆘 Support
+## Troubleshooting
+
+### Bot not responding
+- Check that `TELEGRAM_BOT_TOKEN` is correct
+- Verify your `AUTHORIZED_USER_ID` matches your Telegram user ID
+- Check server logs for error messages
+
+### Database issues
+- Ensure the bot has write permissions in the directory
+- Check that `DATABASE_PATH` is accessible
+- Database is created automatically on first run
+
+### Deployment issues
+- Make sure all environment variables are set on your hosting platform
+- Check that the `PORT` environment variable is used by your hosting provider
+- Verify the health check endpoint is accessible at `/health`
+
+## Support
 
 If you encounter issues:
+1. Check the troubleshooting section above
+2. Review server logs for error messages
+3. Ensure all environment variables are properly set
+4. Test locally before deploying
 
-1. **Check the troubleshooting section** above
-2. **Review server/platform logs** for detailed error messages
-3. **Verify environment variables** are set correctly
-4. **Test with simple messages** first ("Worked 5 hours today")
-5. **Check MongoDB connection** from your deployment platform
+## TODO
 
-For additional help:
-- Review the [Telegram Bot API documentation](https://core.telegram.org/bots/api)
-- Check [MongoDB Atlas documentation](https://docs.atlas.mongodb.com/)
-- Consult your hosting platform's serverless function documentation
+### Problem
+- Free hosting platforms (Render, Railway, Heroku, etc.) put your bot to sleep after inactivity. This causes polling bots to miss messages and, if using SQLite, lose all data on restart.
 
-## 🚀 What's Next?
-
-Current features provide comprehensive work tracking. Future enhancements might include:
-
-- 📊 Data export functionality (CSV, JSON)
-- 📈 Advanced analytics and charts
-- 🔔 Smart reminder system
-- 📱 Web dashboard interface
-- 🔌 Integration with time tracking apps
-- 📧 Email summaries and reports
-- 🎯 Goal tracking and productivity metrics
-
----
-
-**Happy time tracking! 🎯**
+### Potential Solutions
+- Use a paid hosting plan (Render, Railway, Heroku, VPS, etc.) to keep your bot always running.
+- Use a cloud database (e.g., PostgreSQL, MongoDB Atlas) for persistent data storage.
+- Run your bot on your own always-on server (home server, Raspberry Pi, etc.).

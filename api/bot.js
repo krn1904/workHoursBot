@@ -11,6 +11,7 @@
  * - Authorization checking for security
  * - Natural language work log parsing
  * - Command processing and response generation
+ * - Admin commands for database management
  * 
  * @author Work Hours Bot
  * @version 1.0.0
@@ -199,6 +200,18 @@ async function handleCommand(text, chatId) {
       case '/help':
         response = commands.getHelpMessage();
         break;
+      case '/stats':
+        response = await commands.handleStats();
+        break;
+      case '/validate':
+        response = await commands.handleValidate();
+        break;
+      case '/reset':
+        response = await commands.handleReset(arg);
+        break;
+      case '/backup':
+        response = await commands.handleBackup();
+        break;
       default:
         response = `❌ Unknown command: ${command}\n\nUse /help to see available commands.`;
         break;
@@ -270,4 +283,4 @@ async function handleWorkLogMessage(text, chatId) {
       text: `🤔 I didn't detect work hours in your message.\n\n💡 Try messages like:\n• "Worked 6 hours today"\n• "5.5 hrs on freelance"\n• "Yesterday I did 3 hours"\n\nOr use /help for more information.`
     };
   }
-} 
+}
