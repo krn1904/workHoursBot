@@ -218,9 +218,20 @@ class Commands {
     }
   }
 
-  // Return help message with usage instructions and available commands
+  /**
+   * Returns comprehensive help message with usage instructions and available commands
+   * 
+   * Provides:
+   * - Welcome message and quick start guide
+   * - Current pay cycle information
+   * - Example usage messages
+   * - Complete command list with descriptions
+   * 
+   * @returns {string} Formatted help message
+   */
   getHelpMessage() {
     const { cycleStart, cycleEnd } = this.getCurrentPayCycle();
+    
     return `🤖 *Work Hours Bot Help*\n\n` +
            `👋 *Welcome!* Your work hours tracking bot is ready.\n\n` +
            `📅 *Current Pay Cycle:* ${cycleStart} to ${cycleEnd}\n\n` +
@@ -231,14 +242,200 @@ class Commands {
            `📝 *Log work by sending messages like:*\n` +
            `• "Worked 6 hours today"\n` +
            `• "5.5 hrs on freelance"\n` +
-           `• "Yesterday I did 3 hours on project X"\n\n` +
-           `📊 *Commands:*\n` +
-           `• /today - Show today's logged hours\n` +
-           `• /summary - Weekly summary\n` +
-           `• /log - Recent entries\n` +
-           `• /paycycle - Current pay cycle summary\n` +
-           `• /category <tag> - Hours for specific category\n` +
-           `• /help - Show this help`;
+           `• "Yesterday I did 3 hours on project X"\n` +
+           `• "8.25 hours coding on 12/15"\n\n` +
+           `⚡ *Available Commands:*\n` +
+           `• /summary - Weekly and monthly totals with day breakdown\n` +
+           `• /today - Today's logged hours and entries\n` +
+           `• /log - Last 5 work entries with timestamps\n` +
+           `• /category <tag> - Hours for specific category/project\n` +
+           `• /paycycle - Hours for current pay cycle (bi-weekly)\n` +
+           `• /help - Show this help message\n\n` +
+           `🔧 *Admin Commands:*\n` +
+           `• /stats - Database statistics and overview\n` +
+           `• /reset confirm - Reset database (⚠️ DESTRUCTIVE)\n` +
+           `• /validate - Check database integrity\n\n` +
+           `🏷️ *Tips:*\n` +
+           `• Tags are automatically extracted (e.g., "coding", "client work")\n` +
+           `• Supports various time formats (6h, 5.5 hours, 3 hrs)\n` +
+           `• Recognizes "today", "yesterday", and specific dates\n` +
+           `• All data is stored securely in your database`;
+  }
+
+  /**
+   * Handles /stats command - shows database statistics and overview
+   * 
+   * Displays comprehensive information about:
+   * - Total entries and hours
+   * - Date range coverage
+   * - Available tags/categories
+   * - Database health metrics
+   * 
+   * @returns {Promise<string>} Formatted statistics message
+   */
+  async handleStats() {
+    try {
+      const stats = await this.db.getDatabaseStats();
+      
+      const formattedTotalHours = this.parser.formatHours(stats.totalHours);
+      const dateRangeText = stats.dateRange.earliest && stats.dateRange.latest
+        ? `${stats.dateRange.earliest} to ${stats.dateRange.latest}`
+        : 'No entries yet';
+      
+      let tagsText = 'None';
+      if (stats.tags && stats.tags.length > 0) {
+        const displayTags = stats.tags.slice(0, 10); // Show first 10 tags
+        tagsText = displayTags.join(', ');
+        if (stats.tags.length > 10) {
+          tagsText += ` (+${stats.tags.length - 10} more)`;
+        }
+      }
+
+      return `📊 *Database Statistics*\n\n` +
+             `📈 *Overview:*\n` +
+             `   📝 Total Entries: ${stats.totalEntries}\n` +
+             `   ⏱️ Total Hours: ${formattedTotalHours}\n` +
+             `   📅 Date Range: ${dateRangeText}\n` +
+             `   🏷️ Categories: ${stats.uniqueTags}\n\n` +
+             `🏷️ *Available Tags:*\n` +
+             `   ${tagsText}\n\n` +
+             `ℹ️ Use /validate to check database integrity`;
+    } catch (error) {
+      console.error('Error in handleStats:', error);
+      return '❌ Error retrieving database statistics. Please try again.';
+    }
+  }
+
+  /**
+   * Handles /validate command - checks database integrity
+   * 
+   * Validates:
+   * - Data format consistency
+   * - Required field presence
+   * - Value range validation
+   * - Schema compliance
+   * 
+   * @returns {Promise<string>} Formatted validation results
+   */
+  async handleValidate() {
+    try {
+      const validation = await this.db.validateAndRepairDatabase();
+      
+      if (validation.issuesFound === 0) {
+        return `✅ *Database Validation Complete*\n\n` +
+               `🎉 No issues found! Your database is healthy.\n\n` +
+               `📊 Validation completed at: ${new Date(validation.validationTimestamp).toLocaleString()}`;
+      } else {
+        let response = `⚠️ *Database Validation Complete*\n\n` +
+                      `🔍 Found ${validation.issuesFound} issue(s):\n\n`;
+        
+        validation.issues.forEach((issue, index) => {
+          response += `${index + 1}. ${issue}\n`;
+        });
+        
+        if (validation.fixesApplied > 0) {
+          response += `\n✅ Applied ${validation.fixesApplied} automatic fix(es):\n\n`;
+          validation.fixes.forEach((fix, index) => {
+            response += `${index + 1}. ${fix}\n`;
+          });
+        }
+        
+        response += `\n📊 Validation completed at: ${new Date(validation.validationTimestamp).toLocaleString()}`;
+        
+        return response;
+      }
+    } catch (error) {
+      console.error('Error in handleValidate:', error);
+      return '❌ Error validating database. Please try again.';
+    }
+  }
+
+  /**
+   * Handles /reset command - database reset with confirmation
+   * 
+   * This is a destructive operation that requires explicit confirmation.
+   * It provides comprehensive warnings and creates backups before reset.
+   * 
+   * @param {string} confirmationArg - Must be "confirm" to proceed
+   * @returns {Promise<string>} Formatted reset results or confirmation prompt
+   */
+  async handleReset(confirmationArg) {
+    try {
+      // Check if confirmation was provided
+      if (!confirmationArg || confirmationArg.toLowerCase() !== 'confirm') {
+        // Show stats and ask for confirmation
+        const stats = await this.db.getDatabaseStats();
+        
+        if (stats.totalEntries === 0) {
+          return `📊 *Database Reset*\n\n` +
+                 `ℹ️ Database is already empty (0 entries).\n` +
+                 `No reset needed.`;
+        }
+        
+        const formattedTotalHours = this.parser.formatHours(stats.totalHours);
+        const dateRangeText = stats.dateRange.earliest && stats.dateRange.latest
+          ? `${stats.dateRange.earliest} to ${stats.dateRange.latest}`
+          : 'No entries';
+        
+        return `⚠️ *DATABASE RESET WARNING*\n\n` +
+               `🚨 This will permanently delete ALL work entries!\n\n` +
+               `📊 *Current Database:*\n` +
+               `   📝 Entries: ${stats.totalEntries}\n` +
+               `   ⏱️ Hours: ${formattedTotalHours}\n` +
+               `   📅 Range: ${dateRangeText}\n` +
+               `   🏷️ Categories: ${stats.uniqueTags}\n\n` +
+               `💾 A backup will be created before deletion.\n\n` +
+               `⚠️ **TO CONFIRM RESET, SEND:**\n` +
+               `\`/reset confirm\`\n\n` +
+               `❌ **This action cannot be undone!**`;
+      }
+
+      // Proceed with reset
+      const resetResult = await this.db.resetDatabase(true);
+      
+      if (resetResult.success) {
+        return `✅ *Database Reset Complete*\n\n` +
+               `🗑️ Deleted ${resetResult.deletedEntries} entries\n` +
+               `💾 Backup created: ${resetResult.backupCreated} entries\n` +
+               `🕒 Reset at: ${new Date(resetResult.resetTimestamp).toLocaleString()}\n\n` +
+               `🎉 You now have a fresh database!\n` +
+               `📝 Start logging: "Worked 6 hours today"`;
+      } else {
+        return `❌ Database reset failed. Please check logs and try again.`;
+      }
+      
+    } catch (error) {
+      console.error('Error in handleReset:', error);
+      return `❌ Error during database reset: ${error.message}\n\nPlease check your database connection and try again.`;
+    }
+  }
+
+  /**
+   * Handles /backup command - creates a backup of all data
+   * 
+   * @returns {Promise<string>} Formatted backup status
+   */
+  async handleBackup() {
+    try {
+      const backupData = await this.db.createBackup();
+      
+      if (backupData.length === 0) {
+        return `📊 *Backup Status*\n\n` +
+               `ℹ️ Database is empty (0 entries).\n` +
+               `No backup needed.`;
+      }
+      
+      // In a real implementation, you might want to save this to a file or cloud storage
+      return `✅ *Backup Created*\n\n` +
+             `💾 Backed up ${backupData.length} entries\n` +
+             `🕒 Backup created at: ${new Date().toLocaleString()}\n\n` +
+             `ℹ️ Backup is stored in memory during this session.\n` +
+             `For permanent backups, consider exporting your data.`;
+      
+    } catch (error) {
+      console.error('Error in handleBackup:', error);
+      return '❌ Error creating backup. Please try again.';
+    }
   }
 }
 

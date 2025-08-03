@@ -28,11 +28,51 @@ A Node.js Telegram bot that allows you to log your daily work hours through natu
 
 ## Commands
 
-- `/summary` - Total hours worked this week and this month
-- `/today` - Show today's logged hours
-- `/log` - Show the last 5 entries
-- `/category <tag>` - Show total hours under a specific category/tag
-- `/help` - Show available commands
+### Basic Commands
+- `/summary` - Weekly and monthly totals with day breakdown
+- `/today` - Today's logged hours and individual entries
+- `/log` - Last 5 work entries with timestamps
+- `/category <tag>` - Hours for specific category/project
+- `/paycycle` - Hours for current pay cycle (bi-weekly)
+- `/help` - Complete help message and usage guide
+
+### Admin Commands
+- `/stats` - Database statistics and overview
+- `/validate` - Check database integrity and health
+- `/reset confirm` - Reset database (⚠️ DESTRUCTIVE - requires confirmation)
+- `/backup` - Create backup of all data
+
+### 🔄 Database Reset Feature
+
+The bot includes a secure database reset functionality for starting fresh:
+
+#### How to Reset
+1. **Check current data**: Use `/stats` to see what will be deleted
+2. **Initiate reset**: Send `/reset` (without confirm) to see warning
+3. **Confirm reset**: Send `/reset confirm` to proceed
+
+#### Safety Features
+- ⚠️ **Confirmation required**: Must type `/reset confirm` exactly
+- 💾 **Automatic backup**: Creates backup before deletion
+- 📊 **Data preview**: Shows what will be deleted
+- 🚫 **No accidental resets**: Won't work without explicit confirmation
+
+#### Use Cases
+- 🆕 **Fresh start**: Beginning new job or project
+- 🧪 **Testing**: Clearing test data
+- 🧹 **Data cleanup**: Removing old or incorrect entries
+- 🔄 **Migration**: Preparing for data import
+
+**Example Reset Flow:**
+```
+You: /reset
+Bot: Shows warning with current data stats
+
+You: /reset confirm  
+Bot: ✅ Database reset complete! Deleted X entries, backup created.
+```
+
+📖 **For detailed reset instructions, see [RESET_GUIDE.md](RESET_GUIDE.md)**
 
 ## Example Messages
 
@@ -127,14 +167,18 @@ CREATE TABLE work_entries (
 ## Project Structure
 
 ```
-├── index.js          # Main server and bot initialization
-├── bot.js            # Telegram bot handlers and logic
-├── database.js       # SQLite database operations
-├── messageParser.js  # Natural language parsing logic
-├── commands.js       # Bot command handlers
-├── package.json      # Dependencies and scripts
-├── .env.example      # Environment variables template
-└── README.md         # This file
+├── api/
+│   └── bot.js            # Vercel webhook handler for serverless deployment
+├── bot.js                # Core bot setup and configuration
+├── database.js           # MongoDB operations and connection management
+├── messageParser.js      # Natural language parsing logic
+├── commands.js           # Bot command handlers and responses
+├── index.js              # Local development entry point
+├── package.json          # Dependencies and scripts
+├── vercel.json           # Vercel deployment configuration
+├── .env.example          # Environment variables template
+├── README.md             # Main documentation
+└── RESET_GUIDE.md        # Database reset functionality guide
 ```
 
 ## Contributing
