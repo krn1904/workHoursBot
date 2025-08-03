@@ -1,13 +1,45 @@
+/**
+ * Telegram Bot Webhook Handler for Vercel Serverless Functions
+ * 
+ * This module handles incoming webhook requests from Telegram in a serverless
+ * environment. It processes messages, executes commands, and returns responses
+ * directly through the webhook response mechanism for optimal performance.
+ * 
+ * Features:
+ * - Serverless-optimized bot initialization
+ * - Direct webhook response (no outbound HTTP calls)
+ * - Authorization checking for security
+ * - Natural language work log parsing
+ * - Command processing and response generation
+ * 
+ * @author Work Hours Bot
+ * @version 1.0.0
+ */
+
 const TelegramBot = require('node-telegram-bot-api');
 const setupWorkLoggerBot = require('../bot');
 
-// Only create and set up the bot once (on cold start)
+/**
+ * Bot instance and setup state management
+ * These variables persist across function invocations for efficiency
+ */
 let bot;
 let isSetup = false;
 
+/**
+ * Main webhook handler function for Vercel serverless deployment
+ * 
+ * This function is the entry point for all incoming Telegram webhook requests.
+ * It handles bot initialization, message processing, and response generation
+ * in a serverless-optimized manner.
+ * 
+ * @param {Object} req - Express request object from Vercel
+ * @param {Object} res - Express response object from Vercel
+ * @returns {Promise<void>}
+ */
 module.exports = async (req, res) => {
   try {
-    // Check if required environment variables are set
+    // Validate required environment variables
     const token = process.env.TELEGRAM_BOT_TOKEN;
     const authorizedUserId = process.env.AUTHORIZED_USER_ID;
     const mongoUri = process.env.MONGODB_URI;
@@ -17,11 +49,12 @@ module.exports = async (req, res) => {
       return res.status(500).json({ error: 'Configuration error' });
     }
 
-    // Initialize bot instance only once for serverless efficiency
+    // Initialize bot instance only once per cold start for efficiency
     if (!bot) {
       console.log('Creating new TelegramBot instance...');
       bot = new TelegramBot(token);
       
+      // Set up bot handlers if not already done
       if (!isSetup) {
         console.log('Setting up bot handlers...');
         await setupWorkLoggerBot(bot);
@@ -30,6 +63,7 @@ module.exports = async (req, res) => {
       }
     }
 
+    // Only handle POST requests (webhook updates)
     if (req.method === 'POST') {
       try {
         // Process the Telegram update and get response
@@ -51,10 +85,12 @@ module.exports = async (req, res) => {
         
       } catch (updateError) {
         console.error('Error processing update:', updateError);
+        // Always return 200 to prevent Telegram from retrying
         return res.status(200).json({ ok: true });
       }
       
     } else {
+      // Return 405 for non-POST requests
       res.status(405).end();
     }
   } catch (error) {
@@ -66,9 +102,18 @@ module.exports = async (req, res) => {
   }
 };
 
-// Process update and return response instead of sending directly
-// This approach works better in serverless environments where outbound connections may be restricted
+/**
+ * Processes Telegram updates and returns response data instead of sending directly
+ * 
+ * This approach is optimized for serverless environments where outbound HTTP
+ * connections may be restricted or unreliable. By returning response data,
+ * we can use Telegram's webhook response mechanism.
+ * 
+ * @param {Object} update - Telegram update object
+ * @returns {Promise<Object|null>} Response object or null if no response needed
+ */
 async function processUpdateWithResponse(update) {
+  // Only process message updates
   if (!update.message) {
     return null;
   }
@@ -79,7 +124,7 @@ async function processUpdateWithResponse(update) {
   const text = msg.text;
   const authorizedUserId = parseInt(process.env.AUTHORIZED_USER_ID);
 
-  // Check if user is authorized to use this bot
+  // Security check: verify user is authorized
   if (userId !== authorizedUserId) {
     return {
       chatId,
@@ -87,8 +132,8 @@ async function processUpdateWithResponse(update) {
     };
   }
 
-  // Handle greeting message
-  if (text.trim().toLowerCase() === 'hi') {
+  // Handle greeting message for user-friendly onboarding
+  if (text && text.trim().toLowerCase() === 'hi') {
     return {
       chatId,
       text: `🤖 **Work Hours Bot is Ready!**\n\n👋 Hello! Your work hours tracking bot is now active.\n\n💡 **Quick Start:**\n• Send a message like "Worked 6 hours today"\n• Use /help to see all commands`,
@@ -96,63 +141,92 @@ async function processUpdateWithResponse(update) {
     };
   }
 
-  // Handle bot commands
-  if (text.startsWith('/')) {
-    const command = text.split(' ')[0].toLowerCase();
-    const arg = text.split(' ').slice(1).join(' ');
-    
-    try {
-      // Initialize database and command handler
-      const Database = require('../database');
-      const MessageParser = require('../messageParser');
-      const Commands = require('../commands');
-      
-      const db = new Database();
-      await db.connectToMongoDB();
-      const parser = new MessageParser();
-      const commands = new Commands(db, parser);
-      
-      let response;
-      
-      switch (command) {
-        case '/today':
-          response = await commands.handleToday();
-          break;
-        case '/summary':
-          response = await commands.handleSummary();
-          break;
-        case '/log':
-          response = await commands.handleLog();
-          break;
-        case '/category':
-          response = await commands.handleCategory(arg);
-          break;
-        case '/paycycle':
-          response = await commands.handlePayCycle();
-          break;
-        case '/help':
-          response = commands.getHelpMessage();
-          break;
-        default:
-          response = `❌ Unknown command: ${command}\n\nUse /help to see available commands.`;
-          break;
-      }
-      
-      return {
-        chatId,
-        text: response,
-        parseMode: 'Markdown'
-      };
-      
-    } catch (error) {
-      console.error('Error processing command:', error);
-      return {
-        chatId,
-        text: '❌ Error processing command. Please try again.'
-      };
-    }
+  // Handle bot commands (starting with /)
+  if (text && text.startsWith('/')) {
+    return await handleCommand(text, chatId);
   }
 
+  // Handle natural language work log messages
+  if (text) {
+    return await handleWorkLogMessage(text, chatId);
+  }
+
+  // No processable content in the message
+  return null;
+}
+
+/**
+ * Handles bot commands and returns appropriate responses
+ * 
+ * @param {string} text - Command text from user
+ * @param {number} chatId - Telegram chat ID for response
+ * @returns {Promise<Object>} Response object with chat ID and message
+ */
+async function handleCommand(text, chatId) {
+  const command = text.split(' ')[0].toLowerCase();
+  const arg = text.split(' ').slice(1).join(' ');
+  
+  try {
+    // Initialize database and command handler instances
+    const Database = require('../database');
+    const MessageParser = require('../messageParser');
+    const Commands = require('../commands');
+    
+    const db = new Database();
+    await db.connectToMongoDB();
+    const parser = new MessageParser();
+    const commands = new Commands(db, parser);
+    
+    let response;
+    
+    // Route commands to appropriate handlers
+    switch (command) {
+      case '/today':
+        response = await commands.handleToday();
+        break;
+      case '/summary':
+        response = await commands.handleSummary();
+        break;
+      case '/log':
+        response = await commands.handleLog();
+        break;
+      case '/category':
+        response = await commands.handleCategory(arg);
+        break;
+      case '/paycycle':
+        response = await commands.handlePayCycle();
+        break;
+      case '/help':
+        response = commands.getHelpMessage();
+        break;
+      default:
+        response = `❌ Unknown command: ${command}\n\nUse /help to see available commands.`;
+        break;
+    }
+    
+    return {
+      chatId,
+      text: response,
+      parseMode: 'Markdown'
+    };
+    
+  } catch (error) {
+    console.error('Error processing command:', error);
+    return {
+      chatId,
+      text: '❌ Error processing command. Please try again.'
+    };
+  }
+}
+
+/**
+ * Handles natural language work log messages
+ * 
+ * @param {string} text - User message text
+ * @param {number} chatId - Telegram chat ID for response
+ * @returns {Promise<Object>} Response object with chat ID and message
+ */
+async function handleWorkLogMessage(text, chatId) {
   // Parse message for work log entries
   const MessageParser = require('../messageParser');
   const parser = new MessageParser();
@@ -190,7 +264,7 @@ async function processUpdateWithResponse(update) {
       };
     }
   } else {
-    // Message doesn't contain valid work log, provide help
+    // Message doesn't contain valid work log, provide helpful guidance
     return {
       chatId,
       text: `🤔 I didn't detect work hours in your message.\n\n💡 Try messages like:\n• "Worked 6 hours today"\n• "5.5 hrs on freelance"\n• "Yesterday I did 3 hours"\n\nOr use /help for more information.`
