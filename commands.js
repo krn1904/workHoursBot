@@ -89,8 +89,10 @@ class Commands {
   async handleSummary() {
     try {
       // Calculate date ranges for this week (Monday to Sunday)
-      const startOfWeek = moment().startOf('week').format('YYYY-MM-DD');
-      const endOfWeek = moment().endOf('week').format('YYYY-MM-DD');
+      // Get the current date and find the most recent Monday
+      const today = moment();
+      const startOfWeek = today.clone().startOf('isoWeek').format('YYYY-MM-DD'); // Monday
+      const endOfWeek = today.clone().endOf('isoWeek').format('YYYY-MM-DD'); // Sunday
       
       // Calculate date ranges for this month
       const startOfMonth = moment().startOf('month').format('YYYY-MM-DD');
