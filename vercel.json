@@ -3,9 +3,6 @@
   "functions": {
     "api/bot.js": {
       "maxDuration": 30
-    },
-    "api/test.js": {
-      "maxDuration": 10
     }
   }
 } 
