@@ -18,7 +18,7 @@
  */
 
 const TelegramBot = require('node-telegram-bot-api');
-const setupWorkLoggerBot = require('../bot');
+const setupWorkLoggerBot = require('../src/bot/bot');
 
 /**
  * Bot instance and setup state management
@@ -169,9 +169,9 @@ async function handleCommand(text, chatId) {
   
   try {
     // Initialize database and command handler instances
-    const Database = require('../database');
-    const MessageParser = require('../messageParser');
-    const Commands = require('../commands');
+    const Database = require('../src/bot/services/database');
+    const MessageParser = require('../src/bot/handlers/messageParser');
+    const Commands = require('../src/bot/handlers/commands');
     
     const db = new Database();
     await db.connectToMongoDB();
@@ -244,14 +244,14 @@ async function handleCommand(text, chatId) {
  */
 async function handleWorkLogMessage(text, chatId) {
   // Parse message for work log entries
-  const MessageParser = require('../messageParser');
+  const MessageParser = require('../src/bot/handlers/messageParser');
   const parser = new MessageParser();
   const parsed = parser.parseMessage(text);
 
   if (parsed.isValidWorkLog) {
     try {
       // Save work entry to database
-      const Database = require('../database');
+      const Database = require('../src/bot/services/database');
       const db = new Database();
       await db.connectToMongoDB();
       

@@ -17,11 +17,28 @@
 
 The Telegram Work Hours Logger Bot provides several APIs for different purposes:
 
-- **Webhook API**: Receives updates from Telegram
-- **Internal APIs**: For message processing, database operations, and command handling
+- **Webhook API**: Receives updates from Telegram (located in `/api/bot.js`)
+- **Reminder API**: External endpoint for scheduled reminders (located in `/api/reminder.js`)
+- **Internal APIs**: For message processing, database operations, and command handling (located in `/src/bot/`)
 - **Response APIs**: For sending formatted responses back to users
 
 All APIs follow RESTful principles and use JSON for data exchange.
+
+### Project Structure Context
+
+```
+├── api/                      # Serverless API endpoints
+│   ├── bot.js               # Main webhook handler
+│   └── reminder.js          # Daily reminder API endpoint
+├── src/bot/                 # Core application logic
+│   ├── bot.js               # Bot setup and initialization
+│   ├── handlers/            # Message and command processing
+│   │   ├── commands.js      # Command handlers
+│   │   └── messageParser.js # Natural language parser
+│   └── services/            # Business logic services
+│       ├── database.js      # Database operations
+│       └── reminder.js      # Reminder scheduling
+```
 
 ## 🔗 Webhook API
 

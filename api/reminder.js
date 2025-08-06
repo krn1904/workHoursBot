@@ -9,7 +9,7 @@
  * @version 1.0.0
  */
 
-const { sendScheduledReminder } = require('../reminder');
+const { sendScheduledReminder } = require('../src/bot/services/reminder');
 const TelegramBot = require('node-telegram-bot-api');
 
 /**
@@ -84,7 +84,7 @@ module.exports = async (req, res) => {
     const bot = new TelegramBot(token, { polling: false });
 
     // Initialize database for checking if already logged
-    const Database = require('../database');
+    const Database = require('../src/bot/services/database');
     const db = new Database();
 
     // For testing from GitHub Actions, force the reminder

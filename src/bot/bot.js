@@ -9,10 +9,10 @@
  * @version 1.0.0
  */
 
-const Database = require('./database');
-const MessageParser = require('./messageParser');
-const Commands = require('./commands');
-const { createDailyReminder } = require('./reminder');
+const Database = require('./services/database');
+const MessageParser = require('./handlers/messageParser');
+const Commands = require('./handlers/commands');
+const { createDailyReminder } = require('./services/reminder');
 
 /**
  * Sets up the Telegram bot with all necessary handlers and functionality

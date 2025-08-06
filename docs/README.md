@@ -125,17 +125,39 @@ The bot uses MongoDB with the following collection structure:
 ## Project Structure
 
 ```
-├── api/
-│   └── bot.js            # Vercel webhook handler for serverless deployment
-├── bot.js                # Core bot setup and configuration
-├── database.js           # MongoDB operations and connection management
-├── messageParser.js      # Natural language parsing logic
-├── commands.js           # Bot command handlers and responses
-├── package.json          # Dependencies and scripts
-├── vercel.json           # Vercel deployment configuration
-├── .env                  # Environment variables (create from template)
-└── README.md             # This documentation
+├── api/                      # Serverless API endpoints
+│   ├── bot.js               # Vercel webhook handler for Telegram
+│   └── reminder.js          # Daily reminder API endpoint
+├── src/                     # Core application source code
+│   └── bot/
+│       ├── bot.js           # Main bot setup and configuration
+│       ├── handlers/        # Command and message processing
+│       │   ├── commands.js  # Bot command handlers and responses
+│       │   └── messageParser.js # Natural language parsing logic
+│       └── services/        # Business logic services
+│           ├── database.js  # MongoDB operations and connection management
+│           └── reminder.js  # Daily reminder system and scheduling
+├── config/                  # Configuration files
+├── docs/                    # Documentation files
+│   ├── README.md           # This main documentation
+│   ├── API_DOCS.md         # API endpoint documentation
+│   ├── DEPLOYMENT_GUIDE.md # Deployment instructions
+│   ├── TECHNICAL_DOCS.md   # Technical implementation details
+│   └── ...                 # Additional documentation
+├── package.json            # Dependencies and scripts
+├── vercel.json            # Vercel deployment configuration
+├── .env                   # Environment variables (create from template)
+└── work_hours.db          # SQLite database file (legacy)
 ```
+
+### Architecture Overview
+
+- **`/api/`** - Serverless functions for Vercel deployment
+- **`/src/bot/`** - Core bot functionality with modular organization
+- **`/src/bot/handlers/`** - User interaction processing (commands, messages)
+- **`/src/bot/services/`** - Business logic (database, reminders)
+- **`/config/`** - Configuration and environment setup
+- **`/docs/`** - Comprehensive documentation
 
 ## Key Features
 

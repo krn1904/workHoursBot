@@ -43,6 +43,26 @@ The Telegram Work Hours Logger Bot follows a serverless-first architecture optim
 
 ## 🧩 Core Components
 
+### Project Structure
+
+```
+├── api/                      # Serverless API endpoints
+│   ├── bot.js               # Webhook handler for Telegram
+│   └── reminder.js          # Daily reminder API endpoint
+├── src/                     # Core application source code
+│   └── bot/
+│       ├── bot.js           # Main bot setup and configuration
+│       ├── handlers/        # Command and message processing
+│       │   ├── commands.js  # Bot command handlers and responses
+│       │   └── messageParser.js # Natural language parsing logic
+│       └── services/        # Business logic services
+│           ├── database.js  # MongoDB operations and connection management
+│           └── reminder.js  # Daily reminder system and scheduling
+├── config/                  # Configuration files
+├── docs/                    # Documentation files
+└── package.json            # Dependencies and scripts
+```
+
 ### 1. Webhook Handler (`api/bot.js`)
 
 **Purpose**: Entry point for all Telegram webhook requests in serverless environment.
@@ -53,14 +73,13 @@ The Telegram Work Hours Logger Bot follows a serverless-first architecture optim
 - Environment validation
 - Request routing
 
-**Function Signature**:
+**Import Dependencies**:
 ```javascript
-module.exports = async (req, res) => {
-  // Vercel serverless function handler
-}
+const TelegramBot = require('node-telegram-bot-api');
+const setupWorkLoggerBot = require('../src/bot/bot');
 ```
 
-### 2. Bot Setup Module (`bot.js`)
+### 2. Bot Setup Module (`src/bot/bot.js`)
 
 **Purpose**: Core bot configuration and initialization.
 
@@ -69,14 +88,15 @@ module.exports = async (req, res) => {
 - Component initialization
 - Reminder scheduling (development mode)
 
-**API**:
+**Import Dependencies**:
 ```javascript
-async function setupWorkLoggerBot(bot) {
-  // Initialize database, parser, and commands
-}
+const Database = require('./services/database');
+const MessageParser = require('./handlers/messageParser');
+const Commands = require('./handlers/commands');
+const { createDailyReminder } = require('./services/reminder');
 ```
 
-### 3. Database Module (`database.js`)
+### 3. Database Module (`src/bot/services/database.js`)
 
 **Purpose**: MongoDB connection management and data operations.
 
@@ -96,10 +116,13 @@ class Database {
   async getWeeklyTotal(startDate, endDate)
   async getCategoryTotal(tag)
   async getEntriesBetween(startDate, endDate)
+  async getDatabaseStats()
+  async resetDatabase(createBackupFirst)
+  async validateAndRepairDatabase()
 }
 ```
 
-### 4. Message Parser (`messageParser.js`)
+### 4. Message Parser (`src/bot/handlers/messageParser.js`)
 
 **Purpose**: Natural language processing for work log messages.
 
@@ -120,7 +143,7 @@ class MessageParser {
 }
 ```
 
-### 5. Commands Module (`commands.js`)
+### 5. Commands Module (`src/bot/handlers/commands.js`)
 
 **Purpose**: Bot command processing and response generation.
 
@@ -131,6 +154,10 @@ class MessageParser {
 - `/category` - Tag-based filtering
 - `/paycycle` - Bi-weekly summaries
 - `/help` - Usage instructions
+- `/stats` - Database statistics
+- `/validate` - Database integrity check
+- `/reset` - Database reset (with confirmation)
+- `/backup` - Create data backup
 
 **API**:
 ```javascript
@@ -140,7 +167,61 @@ class Commands {
   async handleLog()
   async handleCategory(tag)
   async handlePayCycle()
+  async handleStats()
+  async handleValidate()
+  async handleReset(confirmationArg)
+  async handleBackup()
   getHelpMessage()
+}
+```
+
+### 6. Reminder System (`src/bot/services/reminder.js`)
+
+**Purpose**: Daily reminder scheduling and management.
+
+**Features**:
+- Configurable reminder times (3PM-11PM)
+- Smart scheduling (weekdays only)
+- Skip if already logged
+- Multiple reminder messages
+- Serverless-aware implementation
+
+**API**:
+```javascript
+class DailyReminder {
+  start()                           // Start reminder scheduling
+  stop()                            // Stop reminders
+  async sendReminder()              // Send immediate reminder
+  async triggerManualReminder()     // Test reminder
+  getStatus()                       // Get system status
+  updateConfig(newConfig)           // Update settings
+}
+
+// Serverless helper functions
+function createDailyReminder(bot, userId, database)
+async function sendScheduledReminder(bot, userId, database, forceReminder)
+```
+
+### 7. Daily Reminder API (`api/reminder.js`)
+
+**Purpose**: External API endpoint for triggering reminders via GitHub Actions or cron services.
+
+**Features**:
+- Bearer token authentication
+- GitHub Actions integration
+- Test mode support
+- User authorization validation
+
+**API Endpoint**:
+```javascript
+POST /api/reminder
+Authorization: Bearer <REMINDER_SECRET>
+Content-Type: application/json
+
+{
+  "action": "send_daily",
+  "user_id": "123456789",
+  "source": "github_actions_production"
 }
 ```
 
