@@ -1,59 +1,150 @@
+/**
+ * Commands Module for Telegram Work Hours Logger Bot
+ * 
+ * This module handles all bot commands and provides structured responses
+ * for user queries about their work hours. It implements pay cycle tracking,
+ * summary generation, and various analytics features.
+ * 
+ * Features:
+ * - Weekly and monthly work summaries
+ * - Pay cycle tracking (bi-weekly periods)
+ * - Category-based hour filtering
+ * - Recent entry history
+ * - Today's work log display
+ * - Help and usage information
+ * 
+ * @author Work Hours Bot
+ * @version 1.0.0
+ */
+
 const moment = require('moment');
 
-// Pay cycle start date (must be a Monday)
-const PAY_CYCLE_START = '2024-07-21'; // YYYY-MM-DD
+/**
+ * Pay cycle configuration
+ * This defines the start date for pay cycles (must be a Monday)
+ * All bi-weekly pay periods are calculated from this reference date
+ */
+const PAY_CYCLE_START = '2025-08-04'; // YYYY-MM-DD format - Updated to match actual pay cycle
 
+/**
+ * Calculates the current pay cycle dates based on the configured start date
+ * 
+ * Pay cycles are 14-day periods starting from PAY_CYCLE_START.
+ * This function determines which cycle the current date falls into.
+ * 
+ * @param {moment.Moment} today - Current date (defaults to today)
+ * @returns {Object} Object with cycleStart and cycleEnd in YYYY-MM-DD format
+ */
 function getCurrentPayCycle(today = moment()) {
-  const start = moment(PAY_CYCLE_START);
-  const daysSinceStart = today.diff(start, 'days');
+  // Ensure we're working with date-only (no time component) for accurate calculations
+  const start = moment(PAY_CYCLE_START).startOf('day');
+  const currentDate = moment(today).startOf('day');
+  
+  // Calculate days difference from the start date
+  const daysSinceStart = currentDate.diff(start, 'days');
+  
+  // Handle case where current date is before the pay cycle start
+  if (daysSinceStart < 0) {
+    // If we're before the first pay cycle, return the first cycle
+    const cycleStart = start.clone();
+    const cycleEnd = cycleStart.clone().add(13, 'days');
+    return { 
+      cycleStart: cycleStart.format('YYYY-MM-DD'), 
+      cycleEnd: cycleEnd.format('YYYY-MM-DD') 
+    };
+  }
+  
+  // Calculate which cycle we're in (0-based)
   const cyclesSinceStart = Math.floor(daysSinceStart / 14);
+  
+  // Calculate the start of the current cycle
   const cycleStart = start.clone().add(cyclesSinceStart * 14, 'days');
-  const cycleEnd = cycleStart.clone().add(13, 'days'); // 14 days inclusive
-  return { cycleStart: cycleStart.format('YYYY-MM-DD'), cycleEnd: cycleEnd.format('YYYY-MM-DD') };
+  const cycleEnd = cycleStart.clone().add(13, 'days'); // 14 days total (0-13)
+  
+  return { 
+    cycleStart: cycleStart.format('YYYY-MM-DD'), 
+    cycleEnd: cycleEnd.format('YYYY-MM-DD') 
+  };
 }
 
-// Class for handling bot commands like /summary, /today, /log, etc.
+/**
+ * Class for handling bot commands like /summary, /today, /log, etc.
+ * 
+ * This class processes user commands and generates appropriate responses
+ * by querying the database and formatting the results for display.
+ */
 class Commands {
+  /**
+   * Creates a new Commands instance
+   * 
+   * @param {Database} database - Database instance for data operations
+   * @param {MessageParser} messageParser - Parser instance for formatting utilities
+   */
   constructor(database, messageParser) {
     // Store references to database and parser instances
     this.db = database;
     this.parser = messageParser;
   }
 
-  // Make getCurrentPayCycle accessible
+  /**
+   * Provides access to the current pay cycle calculation
+   * 
+   * @returns {Object} Current pay cycle start and end dates
+   */
   getCurrentPayCycle() {
     return getCurrentPayCycle();
   }
 
-  // Handle /summary command - shows weekly and monthly work totals
+  /**
+   * Handles /summary command - shows weekly and monthly work totals
+   * 
+   * Generates a comprehensive summary including:
+   * - Current week totals (Monday to Sunday)
+   * - Current month totals
+   * - Breakdown by day type (weekdays, Saturday, Sunday)
+   * 
+   * @returns {Promise<string>} Formatted summary message
+   */
   async handleSummary() {
     try {
       // Calculate date ranges for this week (Monday to Sunday)
-      const startOfWeek = moment().startOf('week').format('YYYY-MM-DD');
-      const endOfWeek = moment().endOf('week').format('YYYY-MM-DD');
+      // Get the current date and find the most recent Monday
+      const today = moment();
+      const startOfWeek = today.clone().startOf('isoWeek').format('YYYY-MM-DD'); // Monday
+      const endOfWeek = today.clone().endOf('isoWeek').format('YYYY-MM-DD'); // Sunday
+      
       // Calculate date ranges for this month
       const startOfMonth = moment().startOf('month').format('YYYY-MM-DD');
       const endOfMonth = moment().endOf('month').format('YYYY-MM-DD');
 
-      // Get all entries for week and month
+      // Fetch all entries for week and month in parallel for efficiency
       const [weekEntries, monthEntries] = await Promise.all([
         this.db.getEntriesBetween(startOfWeek, endOfWeek),
         this.db.getEntriesBetween(startOfMonth, endOfMonth)
       ]);
 
-      // Helper to calculate hours breakdown
+      /**
+       * Helper function to calculate hours breakdown by day type
+       * 
+       * @param {Array} entries - Array of work entries
+       * @returns {Object} Hours breakdown with totals
+       */
       function calculateHours(entries) {
-        let weekdayHours = 0, saturdayHours = 0, sundayHours = 0;
+        let weekdayHours = 0;
+        let saturdayHours = 0;
+        let sundayHours = 0;
+        
         entries.forEach(entry => {
-          const day = moment(entry.date).day();
-          if (day === 0) {
+          const dayOfWeek = moment(entry.date).day(); // 0 = Sunday, 6 = Saturday
+          if (dayOfWeek === 0) {
             sundayHours += entry.hours;
-          } else if (day === 6) {
+          } else if (dayOfWeek === 6) {
             saturdayHours += entry.hours;
           } else {
-            weekdayHours += entry.hours;
+            weekdayHours += entry.hours; // Monday through Friday
           }
         });
+        
         return {
           weekdayHours,
           saturdayHours,
@@ -65,16 +156,16 @@ class Commands {
       const week = calculateHours(weekEntries);
       const month = calculateHours(monthEntries);
 
-      // Format hours for display
+      // Format hours for display using parser utility
       const weekHours = this.parser.formatHours(week.total);
       const monthHours = this.parser.formatHours(month.total);
 
-      // Build formatted response message
+      // Build formatted response message with emojis for better UX
       return `📊 *Work Summary*\n\n` +
              `📅 *This Week:* ${weekHours} hours (${weekEntries.length} entries)\n` +
              `   🏢 Weekdays: ${this.parser.formatHours(week.weekdayHours)}h\n` +
              `   📆 Saturday: ${this.parser.formatHours(week.saturdayHours)}h\n` +
-             `   ☀️ Sunday: ${this.parser.formatHours(week.sundayHours)}h\n` +
+             `   ☀️ Sunday: ${this.parser.formatHours(week.sundayHours)}h\n\n` +
              `🗓️ *This Month:* ${monthHours} hours (${monthEntries.length} entries)\n` +
              `   🏢 Weekdays: ${this.parser.formatHours(month.weekdayHours)}h\n` +
              `   📆 Saturday: ${this.parser.formatHours(month.saturdayHours)}h\n` +
@@ -85,7 +176,16 @@ class Commands {
     }
   }
 
-  // Handle /today command - shows all work entries for today
+  /**
+   * Handles /today command - shows all work entries for today
+   * 
+   * Displays today's logged hours with:
+   * - Total hours for the day
+   * - Breakdown by day type
+   * - Individual entry details with timestamps
+   * 
+   * @returns {Promise<string>} Formatted today's work log
+   */
   async handleToday() {
     try {
       // Get today's date in YYYY-MM-DD format
@@ -96,18 +196,22 @@ class Commands {
         return '📅 No work logged for today yet.';
       }
 
-      // Calculate hours for today by type
-      let weekdayHours = 0, saturdayHours = 0, sundayHours = 0;
+      // Calculate hours for today by day type
+      let weekdayHours = 0;
+      let saturdayHours = 0;
+      let sundayHours = 0;
+      
       entries.forEach(entry => {
-        const day = moment(entry.date).day();
-        if (day === 0) {
+        const dayOfWeek = moment(entry.date).day();
+        if (dayOfWeek === 0) {
           sundayHours += entry.hours;
-        } else if (day === 6) {
+        } else if (dayOfWeek === 6) {
           saturdayHours += entry.hours;
         } else {
           weekdayHours += entry.hours;
         }
       });
+      
       const total = weekdayHours + saturdayHours + sundayHours;
       const formattedTotal = this.parser.formatHours(total);
 
@@ -116,6 +220,8 @@ class Commands {
         `   🏢 Weekdays: ${this.parser.formatHours(weekdayHours)}h\n` +
         `   📆 Saturday: ${this.parser.formatHours(saturdayHours)}h\n` +
         `   ☀️ Sunday: ${this.parser.formatHours(sundayHours)}h\n\n`;
+      
+      // Add individual entry details
       entries.forEach((entry, index) => {
         const hours = this.parser.formatHours(entry.hours);
         const tag = entry.tag ? ` 🏷️ [${entry.tag}]` : '';
@@ -130,7 +236,16 @@ class Commands {
     }
   }
 
-  // Handle /log command - shows the last 5 work entries
+  /**
+   * Handles /log command - shows the last 5 work entries
+   * 
+   * Displays recent work history with:
+   * - Entry hours and tags
+   * - Date and time logged
+   * - Chronological order (newest first)
+   * 
+   * @returns {Promise<string>} Formatted work log history
+   */
   async handleLog() {
     try {
       // Get recent entries from database
@@ -148,8 +263,8 @@ class Commands {
       entries.forEach((entry, index) => {
         const hours = this.parser.formatHours(entry.hours);
         const tag = entry.tag ? ` 🏷️ [${entry.tag}]` : '';
-        const date = moment(entry.date).format('MMM DD');
-        const time = moment(entry.timestamp).format('HH:mm');
+        const date = moment(entry.date).format('MMM DD'); // e.g., "Jan 15"
+        const time = moment(entry.timestamp).format('HH:mm'); // e.g., "14:30"
         response += `${index + 1}. ${hours}h${tag} on 📅 ${date} (🕒 ${time})\n`;
       });
 
@@ -160,25 +275,38 @@ class Commands {
     }
   }
 
-  // Handle /category command - shows total hours for a specific tag/category
+  /**
+   * Handles /category command - shows total hours for a specific tag/category
+   * 
+   * Searches for all entries matching the specified tag (case-insensitive)
+   * and provides aggregated statistics.
+   * 
+   * @param {string} tag - Category/tag to search for
+   * @returns {Promise<string>} Formatted category summary
+   */
   async handleCategory(tag) {
     // Validate that a tag was provided
-    if (!tag) {
+    if (!tag || typeof tag !== 'string') {
+      return '❌ Please specify a category/tag. Usage: /category <tag>';
+    }
+
+    const trimmedTag = tag.trim();
+    if (trimmedTag.length === 0) {
       return '❌ Please specify a category/tag. Usage: /category <tag>';
     }
 
     try {
       // Get aggregated data for the specified tag
-      const data = await this.db.getCategoryTotal(tag);
+      const data = await this.db.getCategoryTotal(trimmedTag);
       
       // Handle case where no work was logged under this category
       if (data.totalHours === 0) {
-        return `📊 No work logged under category "${tag}".`;
+        return `📊 No work logged under category "${trimmedTag}".`;
       }
 
       // Format and return category summary
       const hours = this.parser.formatHours(data.totalHours);
-      return `🗂️ *Category:* "${tag}"\n\n` +
+      return `🗂️ *Category:* "${trimmedTag}"\n\n` +
              `⏱️ Total Hours: ${hours}\n` +
              `📝 Total Entries: ${data.entries}`;
     } catch (error) {
@@ -187,30 +315,47 @@ class Commands {
     }
   }
 
-  // Handle /paycycle command - shows hours for current pay cycle
+  /**
+   * Handles /paycycle command - shows hours for current pay cycle
+   * 
+   * Displays work hours for the current bi-weekly pay period with:
+   * - Pay cycle date range
+   * - Total hours and breakdown by day type
+   * - Entry count
+   * 
+   * @returns {Promise<string>} Formatted pay cycle summary
+   */
   async handlePayCycle() {
     try {
       const { cycleStart, cycleEnd } = getCurrentPayCycle();
       const entries = await this.db.getEntriesBetween(cycleStart, cycleEnd);
-      // Calculate hours for pay cycle by type
-      let weekdayHours = 0, saturdayHours = 0, sundayHours = 0;
+      
+      // Calculate hours for pay cycle by day type
+      let weekdayHours = 0;
+      let saturdayHours = 0;
+      let sundayHours = 0;
+      
       entries.forEach(entry => {
-        const day = moment(entry.date).day();
-        if (day === 0) {
+        const dayOfWeek = moment(entry.date).day();
+        if (dayOfWeek === 0) {
           sundayHours += entry.hours;
-        } else if (day === 6) {
+        } else if (dayOfWeek === 6) {
           saturdayHours += entry.hours;
         } else {
           weekdayHours += entry.hours;
         }
       });
+      
       const total = weekdayHours + saturdayHours + sundayHours;
       const formattedTotal = this.parser.formatHours(total);
-      let response = `🗓️ *Current Pay Cycle* (${cycleStart} to ${cycleEnd})\n` +
-        `   ⏳ Total: ${formattedTotal} hours\n` +
+      
+      // Format pay cycle summary
+      const response = `🗓️ *Current Pay Cycle* (${cycleStart} to ${cycleEnd})\n\n` +
+        `   ⏳ Total: ${formattedTotal} hours (${entries.length} entries)\n` +
         `   🏢 Weekdays: ${this.parser.formatHours(weekdayHours)}h\n` +
         `   📆 Saturday: ${this.parser.formatHours(saturdayHours)}h\n` +
         `   ☀️ Sunday: ${this.parser.formatHours(sundayHours)}h`;
+      
       return response;
     } catch (error) {
       console.error('Error in handlePayCycle:', error);
