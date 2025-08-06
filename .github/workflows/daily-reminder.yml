@@ -1,0 +1,138 @@
+name: Daily Work Hours Reminder
+
+# Production mode: Automatic scheduling on main branch
+# Test mode: Manual triggers and push triggers on feature branches
+on:
+  # Enable manual testing on any branch
+  workflow_dispatch:
+    inputs:
+      test_mode:
+        description: 'Run in test mode (ignores time/day restrictions)'
+        required: false
+        default: 'true'
+  
+  # PRODUCTION SCHEDULE - Only runs on main branch
+  # Runs 4 times daily with 25% chance each = ~1 reminder per day
+  # Adjusted for AEST (Australian Eastern Standard Time) - UTC+10
+  # Australian time: 3:00 PM - 11:00 PM becomes UTC: 5:00 AM - 1:00 PM
+  schedule:
+    # 5:00 AM UTC = 3:00 PM AEST
+    - cron: '0 5 * * 1-5'
+    # 7:30 AM UTC = 5:30 PM AEST
+    - cron: '30 7 * * 1-5'
+    # 9:45 AM UTC = 7:45 PM AEST
+    - cron: '45 9 * * 1-5'
+    # 11:15 AM UTC = 9:15 PM AEST
+    - cron: '15 11 * * 1-5'
+  
+  # Trigger on push to feature branches for testing
+  push:
+    branches:
+      - 'Feature/SetupReminder'
+      - 'feature/**'
+      - 'test/**'
+    paths:
+      - '.github/workflows/daily-reminder.yml'
+      - 'api/reminder.js'
+      - 'reminder.js'
+
+jobs:
+  send-reminder:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Check Environment and Mode
+        run: |
+          echo "🔍 Environment Check:"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Event: ${{ github.event_name }}"
+          echo "Repository: ${{ github.repository }}"
+          
+          if [ "${{ github.ref_name }}" = "main" ] && [ "${{ github.event_name }}" = "schedule" ]; then
+            echo "🔔 PRODUCTION MODE: Scheduled reminder on main branch"
+            echo "PRODUCTION_MODE=true" >> $GITHUB_ENV
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "🧪 MANUAL TEST MODE: User-triggered test"
+            echo "TEST_MODE=true" >> $GITHUB_ENV
+          elif [ "${{ github.event_name }}" = "push" ]; then
+            echo "🔧 DEVELOPMENT MODE: Push-triggered test"
+            echo "TEST_MODE=true" >> $GITHUB_ENV
+          else
+            echo "❌ INVALID MODE: Schedule not allowed on non-main branch"
+            echo "SKIP_EXECUTION=true" >> $GITHUB_ENV
+          fi
+      
+      - name: Skip Non-Production Schedule
+        if: env.SKIP_EXECUTION == 'true'
+        run: |
+          echo "⏭️ Skipping execution: Scheduled runs only allowed on main branch"
+          echo "💡 This prevents feature branches from sending production reminders"
+          exit 0
+      
+      - name: Send Reminder
+        if: env.SKIP_EXECUTION != 'true'
+        run: |
+          # Determine if we should send the reminder
+          if [ "${{ env.PRODUCTION_MODE }}" = "true" ]; then
+            # Production mode: Use random selection (25% chance)
+            RANDOM_NUM=$((RANDOM % 4))
+            echo "🎲 Production random selection: $RANDOM_NUM (need 0 to send)"
+            
+            if [ $RANDOM_NUM -eq 0 ]; then
+              echo "🎯 Sending production reminder..."
+              SEND_REMINDER=true
+              SOURCE="github_actions_production"
+            else
+              echo "⏭️ Skipping reminder this time (random selection)"
+              SEND_REMINDER=false
+            fi
+          else
+            # Test mode: Always send
+            echo "🧪 Test mode - always sending reminder"
+            SEND_REMINDER=true
+            SOURCE="github_actions_test"
+          fi
+          
+          if [ "$SEND_REMINDER" = "true" ]; then
+            echo "📡 Calling reminder API..."
+            
+            # Call your bot's reminder endpoint
+            response=$(curl -X POST "${{ secrets.BOT_WEBHOOK_URL }}/api/reminder" \
+              -H "Content-Type: application/json" \
+              -H "Authorization: Bearer ${{ secrets.REMINDER_SECRET }}" \
+              -d "{
+                \"action\": \"send_daily\",
+                \"user_id\": \"${{ secrets.AUTHORIZED_USER_ID }}\",
+                \"source\": \"$SOURCE\"
+              }" \
+              -w "%{http_code}" \
+              -s)
+              
+            echo "📥 API Response: $response"
+            
+            if [[ "$response" == *"200" ]]; then
+              echo "✅ Reminder sent successfully!"
+            else
+              echo "❌ Failed with response: $response"
+              exit 1
+            fi
+          else
+            echo "✅ Completed without sending (random skip)"
+          fi
+
+      - name: Summary
+        if: always() && env.SKIP_EXECUTION != 'true'
+        run: |
+          echo ""
+          echo "📋 Execution Summary:"
+          echo "🕒 Completed at: $(date)"
+          echo "🌍 Timezone: UTC"
+          echo "🔧 Mode: ${{ env.PRODUCTION_MODE == 'true' && 'Production' || 'Test' }}"
+          echo "🎯 Branch: ${{ github.ref_name }}"
+          
+          if [ "${{ env.PRODUCTION_MODE }}" = "true" ]; then
+            echo "📅 Next production check in 2-3 hours"
+            echo "🎲 Each check has ~25% chance of sending reminder"
+          else
+            echo "🧪 This was a test run on feature branch"
+          fi

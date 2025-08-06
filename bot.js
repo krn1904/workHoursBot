@@ -2,8 +2,8 @@
  * Telegram Work Hours Logger Bot - Core Setup Module
  * 
  * This module sets up the main bot functionality by configuring database connections,
- * message parsing, and command handlers. It's designed to work with both polling
- * and webhook modes, though webhook mode is preferred for production deployment.
+ * message parsing, command handlers, and daily reminders. It's designed to work with both 
+ * polling and webhook modes, though webhook mode is preferred for production deployment.
  * 
  * @author Work Hours Bot
  * @version 1.0.0
@@ -12,6 +12,7 @@
 const Database = require('./database');
 const MessageParser = require('./messageParser');
 const Commands = require('./commands');
+const { createDailyReminder } = require('./reminder');
 
 /**
  * Sets up the Telegram bot with all necessary handlers and functionality
@@ -20,7 +21,7 @@ const Commands = require('./commands');
  * - Database connection (MongoDB)
  * - Message parsing for natural language work logs
  * - Command handlers for bot commands
- * - Daily reminder scheduling (note: not functional in webhook mode)
+ * - Daily reminder scheduling (note: limited functionality in webhook mode)
  * 
  * @param {TelegramBot} bot - The TelegramBot instance to configure
  * @throws {Error} If required environment variables are missing
@@ -43,6 +44,19 @@ async function setupWorkLoggerBot(bot) {
   
   const parser = new MessageParser();
   const commands = new Commands(db, parser);
+
+  // Initialize daily reminder system
+  // Note: This will only work effectively in non-serverless environments
+  try {
+    const dailyReminder = createDailyReminder(bot, authorizedUserId, db);
+    console.log('📅 Daily reminder system initialized');
+    
+    // Store reminder instance for potential manual control
+    bot.dailyReminder = dailyReminder;
+  } catch (error) {
+    console.warn('⚠️ Daily reminder initialization failed:', error.message);
+    console.log('💡 For serverless deployments, consider using external cron services');
+  }
 }
 
 module.exports = setupWorkLoggerBot;

@@ -582,6 +582,75 @@ class Commands {
       return '❌ Error creating backup. Please try again.';
     }
   }
+
+  /**
+   * Handles /reminder command - manages daily reminder settings
+   * 
+   * @param {string} action - Action to perform (status, start, stop, test, config)
+   * @returns {Promise<string>} Formatted reminder management response
+   */
+  async handleReminder(action = 'status') {
+    try {
+      // This would need access to the reminder instance
+      // For now, provide static information about reminder functionality
+      
+      const actionLower = action.toLowerCase();
+      
+      switch (actionLower) {
+        case 'status':
+          return `🔔 *Daily Reminder Status*\n\n` +
+                 `⏰ *Schedule:* Random time between 3:00 PM - 11:00 PM\n` +
+                 `📅 *Active Days:* Monday - Friday\n` +
+                 `🎯 *Purpose:* Reminds you to log your daily work hours\n` +
+                 `🤖 *Smart Skip:* Won't remind if you've already logged hours today\n\n` +
+                 `💡 *Note:* Reminders work best in always-on deployments.\n` +
+                 `For serverless platforms, consider external cron services.\n\n` +
+                 `⚡ *Commands:*\n` +
+                 `• \`/reminder status\` - Show this status\n` +
+                 `• \`/reminder test\` - Send test reminder now\n` +
+                 `• \`/reminder info\` - Detailed information`;
+        
+        case 'test':
+          // This would trigger a manual reminder
+          return `🧪 *Test Reminder*\n\n` +
+                 `⏰ Time to log your work hours! How many hours did you work today?\n\n` +
+                 `💡 *This is what your daily reminders look like!*\n` +
+                 `Actual reminders will be sent randomly between 3:00 PM - 11:00 PM on weekdays.\n\n` +
+                 `📝 Just reply with something like: "Worked 8 hours today"`;
+        
+        case 'info':
+          return `📋 *Daily Reminder Information*\n\n` +
+                 `🎯 **Purpose:** Encourage consistent work hour logging\n\n` +
+                 `⏰ **Timing:**\n` +
+                 `   • Random time between 3:00 PM - 11:00 PM\n` +
+                 `   • Only on weekdays (Monday - Friday)\n` +
+                 `   • Different time each day to stay engaging\n\n` +
+                 `🧠 **Smart Features:**\n` +
+                 `   • Skips reminder if you've already logged hours\n` +
+                 `   • Contextual messages based on time of day\n` +
+                 `   • 20+ different reminder messages to avoid repetition\n\n` +
+                 `💬 **Message Examples:**\n` +
+                 `   • "⏰ Time to log your work hours!"\n` +
+                 `   • "📊 Daily check-in: How many hours today?"\n` +
+                 `   • "🌟 Time to record today's work hours!"\n\n` +
+                 `🔧 **For Developers:**\n` +
+                 `   • Works in always-on server environments\n` +
+                 `   • Limited functionality in serverless deployments\n` +
+                 `   • Can integrate with external cron services`;
+        
+        default:
+          return `❌ Unknown reminder action: "${action}"\n\n` +
+                 `Available actions:\n` +
+                 `• \`/reminder status\` - Show reminder status\n` +
+                 `• \`/reminder test\` - Send test reminder\n` +
+                 `• \`/reminder info\` - Detailed information`;
+      }
+      
+    } catch (error) {
+      console.error('Error in handleReminder:', error);
+      return '❌ Error managing reminder settings. Please try again.';
+    }
+  }
 }
 
 module.exports = Commands;
