@@ -103,41 +103,36 @@ Vercel offers excellent serverless function support with generous free tier:
 
 #### 1. Prepare Repository
 ```bash
-# Fork the repository on GitHub, then:
-git clone https://github.com/yourusername/telegram-work-logger
-cd telegram-work-logger
+git clone your-repository
+cd workhoursbot
 ```
 
 #### 2. Deploy to Vercel
-1. Go to [Vercel](https://vercel.com)
-2. Sign in with GitHub
-3. Click **"New Project"**
-4. Import your forked repository
-5. Leave build settings as default
-6. Click **"Deploy"**
+- Connect GitHub repository to [Vercel](https://vercel.com)
+- Import your project
+- Vercel will automatically detect Next.js/Node.js configuration
 
 #### 3. Configure Environment Variables
-1. Go to your project dashboard
-2. Click **"Settings"** → **"Environment Variables"**
-3. Add these variables:
-
-| Name | Value | Environment |
-|------|-------|-------------|
-| `TELEGRAM_BOT_TOKEN` | Your bot token | All |
-| `AUTHORIZED_USER_ID` | Your user ID | All |
-| `MONGODB_URI` | Your connection string | All |
+Add these in Vercel dashboard → Project → Settings → Environment Variables:
+```
+TELEGRAM_BOT_TOKEN=your_bot_token
+AUTHORIZED_USER_ID=your_telegram_user_id
+MONGODB_URI=your_mongodb_connection_string
+REMINDER_SECRET=your_random_secret_key
+```
 
 #### 4. Redeploy
-1. Go to **"Deployments"** tab
-2. Click **"Redeploy"** on the latest deployment
-3. Wait for deployment to complete
+Force redeploy to apply environment variables
 
 #### 5. Get Webhook URL
-Your webhook URL will be: `https://your-project-name.vercel.app/api/bot`
+Your webhook endpoint will be: `https://your-project.vercel.app/api/bot`
+
+#### 6. Set Up Daily Reminders
+Follow the [GitHub Actions Setup Guide](GITHUB_ACTIONS_SETUP.md) to configure automated daily reminders with Australian timezone support.
 
 ### Railway
 
-Railway provides simple deployment with automatic SSL:
+Railway provides simple deployment with persistent storage:
 
 #### 1. Deploy from GitHub
 1. Go to [Railway](https://railway.app)

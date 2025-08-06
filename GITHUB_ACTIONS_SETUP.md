@@ -4,10 +4,17 @@ This guide helps you set up automatic daily reminders using GitHub Actions, whic
 
 ## 🎯 How It Works
 
-1. **GitHub Actions runs on schedule** (4 times daily between 3PM-11PM UTC)
+1. **GitHub Actions runs on schedule** (4 times daily between 3PM-11PM Australian time)
 2. **Random selection** ensures only 1 reminder per day on average
 3. **Calls your bot's API** to trigger the reminder
 4. **Sends Telegram message** using your existing reminder system
+
+## 🇦🇺 Australian Timezone Support
+
+The system is configured for **Australian Eastern Standard Time (AEST)** by default:
+- Reminders arrive at 3:00 PM, 5:30 PM, 7:45 PM, and 9:15 PM AEST
+- GitHub Actions runs at corresponding UTC times (5:00 AM, 7:30 AM, 9:45 AM, 11:15 AM UTC)
+- Supports other Australian timezones (see customization section)
 
 ## 🔧 Setup Steps
 
@@ -59,11 +66,11 @@ curl -X POST "https://your-app.vercel.app/api/reminder" \
 
 ## ⏰ Schedule Details
 
-The workflow runs **4 times daily** on weekdays:
-- 3:00 PM UTC (15:00)
-- 5:30 PM UTC (17:30)
-- 7:45 PM UTC (19:45)
-- 9:15 PM UTC (21:15)
+The workflow runs **4 times daily** on weekdays in Australian timezone:
+- **3:00 PM AEST** (afternoon check-in)
+- **5:30 PM AEST** (end of workday) 
+- **7:45 PM AEST** (evening wrap-up)
+- **9:15 PM AEST** (final reminder)
 
 Each run has a **25% chance** of sending a reminder, ensuring you get approximately **1 reminder per day** at a random time.
 
@@ -76,14 +83,33 @@ Each run has a **25% chance** of sending a reminder, ensuring you get approximat
 
 ## 🌍 Timezone Considerations
 
-The schedule uses **UTC time**. Convert to your local timezone:
+The schedule uses **Australian Eastern Standard Time (AEST)** by default.
 
-| Your Timezone | Reminder Window |
-|---------------|-----------------|
-| **EST/EDT** (UTC-5/-4) | 10:00 AM - 6:00 PM |
-| **PST/PDT** (UTC-8/-7) | 7:00 AM - 3:00 PM |
-| **GMT** (UTC+0) | 3:00 PM - 11:00 PM |
-| **CET/CEST** (UTC+1/+2) | 4:00 PM - 12:00 AM |
+### **Current Configuration (AEST - Sydney/Melbourne):**
+| Australian Time | UTC Time | GitHub Actions Cron |
+|----------------|----------|-------------------|
+| 3:00 PM AEST | 5:00 AM UTC | `0 5 * * 1-5` |
+| 5:30 PM AEST | 7:30 AM UTC | `30 7 * * 1-5` |
+| 7:45 PM AEST | 9:45 AM UTC | `45 9 * * 1-5` |
+| 9:15 PM AEST | 11:15 AM UTC | `15 11 * * 1-5` |
+
+### **Other Australian Timezones:**
+
+**Adelaide/Darwin (ACST - UTC+9.5):**
+```yaml
+- cron: '30 5 * * 1-5'   # 3:00 PM ACST
+- cron: '0 8 * * 1-5'    # 5:30 PM ACST  
+- cron: '15 10 * * 1-5'  # 7:45 PM ACST
+- cron: '45 11 * * 1-5'  # 9:15 PM ACST
+```
+
+**Perth (AWST - UTC+8):**
+```yaml
+- cron: '0 7 * * 1-5'    # 3:00 PM AWST
+- cron: '30 9 * * 1-5'   # 5:30 PM AWST
+- cron: '45 11 * * 1-5'  # 7:45 PM AWST
+- cron: '15 13 * * 1-5'  # 9:15 PM AWST
+```
 
 To adjust for your timezone, modify the cron schedules in `.github/workflows/daily-reminder.yml`.
 
@@ -115,35 +141,50 @@ To adjust for your timezone, modify the cron schedules in `.github/workflows/dai
 
 ## 🎛️ Customization
 
+### Change Australian Timezone
+Edit the cron schedules in `.github/workflows/daily-reminder.yml` based on your location:
+
+**For Adelaide (ACST):**
+```yaml
+# Replace the existing schedule section with:
+schedule:
+  - cron: '30 5 * * 1-5'   # 3:00 PM ACST
+  - cron: '0 8 * * 1-5'    # 5:30 PM ACST
+  - cron: '15 10 * * 1-5'  # 7:45 PM ACST
+  - cron: '45 11 * * 1-5'  # 9:15 PM ACST
+```
+
+**For Perth (AWST):**
+```yaml
+# Replace the existing schedule section with:
+schedule:
+  - cron: '0 7 * * 1-5'    # 3:00 PM AWST
+  - cron: '30 9 * * 1-5'   # 5:30 PM AWST
+  - cron: '45 11 * * 1-5'  # 7:45 PM AWST
+  - cron: '15 13 * * 1-5'  # 9:15 PM AWST
+```
+
 ### Change Reminder Frequency
 Edit the cron schedules in `.github/workflows/daily-reminder.yml`:
 ```yaml
 # More frequent (every 2 hours)
-- cron: '0 15,17,19,21,23 * * 1-5'
+- cron: '0 5,7,9,11,13 * * 1-5'
 
 # Less frequent (once daily)
-- cron: '0 18 * * 1-5'  # 6 PM UTC only
+- cron: '0 7 * * 1-5'  # 5:30 PM AEST only
 ```
 
 ### Include Weekends
 Change `1-5` to `0-6` in cron schedules:
 ```yaml
-- cron: '0 15 * * 0-6'  # Include Sunday (0) and Saturday (6)
-```
-
-### Different Timezone
-Adjust hours in cron schedules:
-```yaml
-# For PST (UTC-8), subtract 8 hours
-- cron: '0 7 * * 1-5'   # 7 AM UTC = 11 PM PST (previous day)
-- cron: '30 9 * * 1-5'  # 9:30 AM UTC = 1:30 AM PST
+- cron: '0 5 * * 0-6'  # Include Sunday (0) and Saturday (6)
 ```
 
 ## ✅ Success Indicators
 
 You'll know it's working when:
 - GitHub Actions runs show "✅ Reminder sent successfully"
-- You receive random Telegram reminders between your scheduled hours
+- You receive random Telegram reminders between 3PM-11PM Australian time
 - The bot checks if you've already logged hours (smart skip feature)
 - Reminders have variety in messages and timing
 

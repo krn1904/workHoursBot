@@ -14,6 +14,8 @@ A Node.js Telegram bot that allows you to log your daily work hours through natu
 - 🔍 **Smart Parsing**: Understands various time formats (6h, 5.5 hours, 3 hrs)
 - 📈 **Pay Cycle Tracking**: Monitor your work patterns with 14-day bi-weekly cycles
 - 🏃 **Quick Commands**: Fast access to summaries and recent entries
+- 🔔 **Daily Reminders**: Automated GitHub Actions reminders (Australian timezone support)
+- 🇦🇺 **Australian Timezone**: Optimized for AEST/ACST/AWST work hours
 
 ## Commands
 
