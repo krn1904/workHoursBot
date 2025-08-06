@@ -1,6 +1,6 @@
 # Telegram Work Hours Logger Bot
 
-A Node.js Telegram bot that allows you to log your daily work hours through natural language messages and provides summaries and analytics.
+A Node.js Telegram bot that allows you to log your daily work hours through natural language messages and provides summaries and analytics. Built for serverless deployment with MongoDB integration and webhook-based message handling.
 
 ## Features
 
@@ -9,12 +9,12 @@ A Node.js Telegram bot that allows you to log your daily work hours through natu
 - 🏷️ **Automatic Tagging**: Detects project names and categories from your messages
 - 📊 **Analytics**: Get weekly/monthly summaries and category breakdowns
 - 🔒 **Single User Security**: Only accepts messages from your authorized user ID
-- 💾 **SQLite Storage**: Lightweight local database storage
-- ⚡ **Real-time Responses**: Instant confirmation when logging work hours
+- 💾 **MongoDB Storage**: Cloud-ready database with automatic connection management
+- ⚡ **Webhook Integration**: Serverless-optimized message handling for Vercel deployment
 - 🔍 **Smart Parsing**: Understands various time formats (6h, 5.5 hours, 3 hrs)
-- 📈 **Progress Tracking**: Monitor your work patterns over time
+- 📈 **Progress Tracking**: Monitor your work patterns over time with 14-day pay cycles
 - 🏃 **Quick Commands**: Fast access to summaries and recent entries
-- 🌐 **Cloud Ready**: Easy deployment to Railway, Render, or Fly.io
+- 🌐 **Cloud Ready**: Optimized for Vercel, Railway, Render deployment
 - 📱 **Mobile Friendly**: Works seamlessly on Telegram mobile app
 - 🔄 **Automatic Timestamps**: Every entry includes when it was logged
 - 📋 **Entry History**: View your last 5 work entries with `/log`
@@ -24,7 +24,7 @@ A Node.js Telegram bot that allows you to log your daily work hours through natu
 - 🛡️ **Error Handling**: Graceful error messages and recovery
 - 🚀 **Zero Configuration**: Works out of the box after environment setup
 - 📊 **Multiple Time Periods**: Weekly and monthly summaries available
-- 🔐 **Privacy First**: All data stored locally or on your chosen hosting platform
+- 🔐 **Privacy First**: Secure cloud database with connection pooling
 
 ## Commands
 
@@ -95,7 +95,14 @@ Bot: ✅ Database reset complete! Deleted X entries, backup created.
 1. Message [@userinfobot](https://t.me/userinfobot) on Telegram
 2. Note down your user ID number
 
-### 3. Environment Configuration
+### 3. MongoDB Setup
+
+1. Create a free MongoDB Atlas account at [mongodb.com](https://www.mongodb.com/atlas)
+2. Create a new cluster and database
+3. Get your MongoDB connection string
+4. Add your IP address to the whitelist (or use 0.0.0.0/0 for all IPs)
+
+### 4. Environment Configuration
 
 1. Copy `.env.example` to `.env`:
    ```bash
@@ -106,12 +113,13 @@ Bot: ✅ Database reset complete! Deleted X entries, backup created.
    ```env
    TELEGRAM_BOT_TOKEN=your_bot_token_here
    AUTHORIZED_USER_ID=your_telegram_user_id_here
+   MONGODB_URI=your_mongodb_connection_string
+   DATABASE_NAME=workhoursbot
    PORT=3000
    NODE_ENV=production
-   DATABASE_PATH=./work_hours.db
    ```
 
-### 4. Local Development
+### 5. Local Development
 
 1. Install dependencies:
    ```bash
@@ -126,6 +134,14 @@ Bot: ✅ Database reset complete! Deleted X entries, backup created.
 3. Message your bot on Telegram to test
 
 ## Deployment
+
+### Deploy to Vercel (Recommended)
+
+1. Fork/clone this repository
+2. Connect your GitHub repo to [Vercel](https://vercel.com)
+3. Add environment variables in Vercel dashboard
+4. Deploy automatically
+5. Set your bot webhook URL to: `https://your-vercel-domain.vercel.app/api/bot`
 
 ### Deploy to Railway
 
@@ -142,26 +158,21 @@ Bot: ✅ Database reset complete! Deleted X entries, backup created.
 4. Add environment variables
 5. Deploy
 
-### Deploy to Fly.io
-
-1. Install [Fly CLI](https://fly.io/docs/getting-started/installing-flyctl/)
-2. Run `fly launch` in project directory
-3. Set environment variables: `fly secrets set TELEGRAM_BOT_TOKEN=your_token`
-4. Deploy: `fly deploy`
-
 ## Database Schema
 
-The bot uses SQLite with a simple schema:
+The bot uses MongoDB with the following collection structure:
 
-```sql
-CREATE TABLE work_entries (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  date TEXT NOT NULL,           -- YYYY-MM-DD format
-  hours REAL NOT NULL,          -- Decimal hours (e.g., 5.5)
-  tag TEXT,                     -- Optional category/project tag
-  raw_message TEXT NOT NULL,    -- Original message from user
-  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-);
+```javascript
+// work_entries collection
+{
+  _id: ObjectId,
+  date: "YYYY-MM-DD",           // Date string
+  hours: 5.5,                   // Decimal hours
+  tag: "project-name",          // Optional category/project tag
+  raw_message: "5.5 hrs on freelance", // Original message
+  timestamp: ISODate,           // When entry was created
+  user_id: "123456789"          // Telegram user ID
+}
 ```
 
 ## Project Structure
@@ -181,12 +192,35 @@ CREATE TABLE work_entries (
 └── RESET_GUIDE.md        # Database reset functionality guide
 ```
 
+## Key Features Explained
+
+### Natural Language Processing
+The bot intelligently parses messages to extract:
+- **Time amounts**: "6 hours", "5.5 hrs", "3h"
+- **Dates**: "today", "yesterday", "Monday", "2025-01-15"
+- **Project tags**: Automatically detects project names and categories
+
+### Pay Cycle Tracking
+- **14-day cycles**: Automatically tracks bi-weekly periods
+- **Current cycle**: Starts with your first logged entry
+- **Flexible updates**: Easy to adjust cycle dates when needed
+
+### MongoDB Integration
+- **Connection pooling**: Efficient database connections for serverless
+- **Automatic reconnection**: Handles connection drops gracefully
+- **Cloud-ready**: Optimized for MongoDB Atlas and serverless deployment
+
+### Webhook Architecture
+- **Serverless optimized**: Perfect for Vercel, Netlify, and similar platforms
+- **No polling**: Uses Telegram webhooks for instant message processing
+- **Stateless**: Each request is independent, ideal for serverless functions
+
 ## Contributing
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Test thoroughly
+4. Test thoroughly with MongoDB connection
 5. Submit a pull request
 
 ## License
@@ -198,32 +232,34 @@ MIT License - feel free to modify and use for your own projects.
 ### Bot not responding
 - Check that `TELEGRAM_BOT_TOKEN` is correct
 - Verify your `AUTHORIZED_USER_ID` matches your Telegram user ID
+- Ensure webhook URL is properly set in Telegram
 - Check server logs for error messages
 
 ### Database issues
-- Ensure the bot has write permissions in the directory
-- Check that `DATABASE_PATH` is accessible
-- Database is created automatically on first run
+- Verify `MONGODB_URI` connection string is correct
+- Check MongoDB Atlas network access settings
+- Ensure database user has read/write permissions
+- Test MongoDB connection independently
 
 ### Deployment issues
 - Make sure all environment variables are set on your hosting platform
-- Check that the `PORT` environment variable is used by your hosting provider
-- Verify the health check endpoint is accessible at `/health`
+- Check that the webhook endpoint `/api/bot` is accessible
+- Verify MongoDB connection from your hosting environment
+- Test webhook URL responds to POST requests
+
+### Webhook Setup
+For Vercel deployment, set your webhook URL in Telegram:
+```bash
+curl -X POST "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook" \
+     -H "Content-Type: application/json" \
+     -d '{"url": "https://your-vercel-domain.vercel.app/api/bot"}'
+```
 
 ## Support
 
 If you encounter issues:
 1. Check the troubleshooting section above
-2. Review server logs for error messages
-3. Ensure all environment variables are properly set
-4. Test locally before deploying
-
-## TODO
-
-### Problem
-- Free hosting platforms (Render, Railway, Heroku, etc.) put your bot to sleep after inactivity. This causes polling bots to miss messages and, if using SQLite, lose all data on restart.
-
-### Potential Solutions
-- Use a paid hosting plan (Render, Railway, Heroku, VPS, etc.) to keep your bot always running.
-- Use a cloud database (e.g., PostgreSQL, MongoDB Atlas) for persistent data storage.
-- Run your bot on your own always-on server (home server, Raspberry Pi, etc.).
+2. Review server/function logs for error messages
+3. Test MongoDB connection independently
+4. Ensure webhook URL is properly configured
+5. Verify all environment variables are set correctly
