@@ -212,6 +212,9 @@ async function handleCommand(text, chatId) {
       case '/backup':
         response = await commands.handleBackup();
         break;
+      case '/reminder':
+        response = await commands.handleReminder(arg);
+        break;
       default:
         response = `❌ Unknown command: ${command}\n\nUse /help to see available commands.`;
         break;
