@@ -24,7 +24,7 @@ const moment = require('moment');
  * This defines the start date for pay cycles (must be a Monday)
  * All bi-weekly pay periods are calculated from this reference date
  */
-const PAY_CYCLE_START = '2024-07-21'; // YYYY-MM-DD format
+const PAY_CYCLE_START = '2025-08-04'; // YYYY-MM-DD format - Updated to match actual pay cycle
 
 /**
  * Calculates the current pay cycle dates based on the configured start date
@@ -36,11 +36,30 @@ const PAY_CYCLE_START = '2024-07-21'; // YYYY-MM-DD format
  * @returns {Object} Object with cycleStart and cycleEnd in YYYY-MM-DD format
  */
 function getCurrentPayCycle(today = moment()) {
-  const start = moment(PAY_CYCLE_START);
-  const daysSinceStart = today.diff(start, 'days');
+  // Ensure we're working with date-only (no time component) for accurate calculations
+  const start = moment(PAY_CYCLE_START).startOf('day');
+  const currentDate = moment(today).startOf('day');
+  
+  // Calculate days difference from the start date
+  const daysSinceStart = currentDate.diff(start, 'days');
+  
+  // Handle case where current date is before the pay cycle start
+  if (daysSinceStart < 0) {
+    // If we're before the first pay cycle, return the first cycle
+    const cycleStart = start.clone();
+    const cycleEnd = cycleStart.clone().add(13, 'days');
+    return { 
+      cycleStart: cycleStart.format('YYYY-MM-DD'), 
+      cycleEnd: cycleEnd.format('YYYY-MM-DD') 
+    };
+  }
+  
+  // Calculate which cycle we're in (0-based)
   const cyclesSinceStart = Math.floor(daysSinceStart / 14);
+  
+  // Calculate the start of the current cycle
   const cycleStart = start.clone().add(cyclesSinceStart * 14, 'days');
-  const cycleEnd = cycleStart.clone().add(13, 'days'); // 14 days inclusive (0-13)
+  const cycleEnd = cycleStart.clone().add(13, 'days'); // 14 days total (0-13)
   
   return { 
     cycleStart: cycleStart.format('YYYY-MM-DD'), 
