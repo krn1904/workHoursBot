@@ -13,15 +13,17 @@ on:
   
   # PRODUCTION SCHEDULE - Only runs on main branch
   # Runs 4 times daily with 25% chance each = ~1 reminder per day
+  # Adjusted for AEST (Australian Eastern Standard Time) - UTC+10
+  # Australian time: 3:00 PM - 11:00 PM becomes UTC: 5:00 AM - 1:00 PM
   schedule:
-    # 3:00 PM UTC (15:00)
-    - cron: '0 15 * * 1-5'
-    # 5:30 PM UTC (17:30) 
-    - cron: '30 17 * * 1-5'
-    # 7:45 PM UTC (19:45)
-    - cron: '45 19 * * 1-5'
-    # 9:15 PM UTC (21:15)
-    - cron: '15 21 * * 1-5'
+    # 5:00 AM UTC = 3:00 PM AEST
+    - cron: '0 5 * * 1-5'
+    # 7:30 AM UTC = 5:30 PM AEST
+    - cron: '30 7 * * 1-5'
+    # 9:45 AM UTC = 7:45 PM AEST
+    - cron: '45 9 * * 1-5'
+    # 11:15 AM UTC = 9:15 PM AEST
+    - cron: '15 11 * * 1-5'
   
   # Trigger on push to feature branches for testing
   push:
