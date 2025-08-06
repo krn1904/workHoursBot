@@ -87,17 +87,21 @@ module.exports = async (req, res) => {
     const Database = require('../database');
     const db = new Database();
 
+    // For testing from GitHub Actions, force the reminder
+    const isTestMode = source === 'github_actions_test' || source === 'manual_test';
+    
     // Send the scheduled reminder
-    await sendScheduledReminder(bot, authorizedUserId, db);
+    await sendScheduledReminder(bot, authorizedUserId, db, isTestMode);
 
-    console.log(`✅ Daily reminder triggered successfully from ${source || 'external'}`);
+    console.log(`✅ Daily reminder triggered successfully from ${source || 'external'} ${isTestMode ? '(TEST MODE)' : ''}`);
 
     // Return success response
     return res.status(200).json({
       success: true,
       message: 'Reminder sent successfully',
       timestamp: new Date().toISOString(),
-      source: source || 'external'
+      source: source || 'external',
+      testMode: isTestMode
     });
 
   } catch (error) {

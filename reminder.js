@@ -376,21 +376,33 @@ function createDailyReminder(bot, authorizedUserId, database = null) {
  * @param {TelegramBot} bot - Telegram bot instance
  * @param {number} authorizedUserId - User ID to send reminders to
  * @param {Database} database - Optional database instance
+ * @param {boolean} forceReminder - Skip time/day checks for testing
  * @returns {Promise<void>}
  */
-async function sendScheduledReminder(bot, authorizedUserId, database = null) {
+async function sendScheduledReminder(bot, authorizedUserId, database = null, forceReminder = false) {
   const reminder = new DailyReminder(bot, authorizedUserId, database);
+  
+  // For testing, allow forcing the reminder regardless of time
+  if (forceReminder) {
+    console.log('🧪 Force reminder mode - sending test reminder');
+    await reminder.sendReminder();
+    return;
+  }
   
   // Check if it's an appropriate time to send reminder
   const now = moment();
   const hour = now.hour();
   const dayOfWeek = now.day();
   
+  console.log(`⏰ Current time: ${now.format('YYYY-MM-DD HH:mm:ss')} (Hour: ${hour}, Day: ${dayOfWeek})`);
+  
   // Check if it's within reminder hours and on an active day
   if (hour >= 15 && hour <= 23 && [1, 2, 3, 4, 5].includes(dayOfWeek)) {
+    console.log('✅ Within reminder time window, sending reminder');
     await reminder.sendReminder();
   } else {
     console.log('⏭️ Outside reminder time window or inactive day, skipping');
+    console.log(`   Expected: Hour 15-23 (currently ${hour}), Days Mon-Fri (currently ${dayOfWeek})`);
   }
 }
 
