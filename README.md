@@ -12,19 +12,8 @@ A Node.js Telegram bot that allows you to log your daily work hours through natu
 - 💾 **MongoDB Storage**: Cloud-ready database with automatic connection management
 - ⚡ **Webhook Integration**: Serverless-optimized message handling for Vercel deployment
 - 🔍 **Smart Parsing**: Understands various time formats (6h, 5.5 hours, 3 hrs)
-- 📈 **Progress Tracking**: Monitor your work patterns over time with 14-day pay cycles
+- 📈 **Pay Cycle Tracking**: Monitor your work patterns with 14-day bi-weekly cycles
 - 🏃 **Quick Commands**: Fast access to summaries and recent entries
-- 🌐 **Cloud Ready**: Optimized for Vercel, Railway, Render deployment
-- 📱 **Mobile Friendly**: Works seamlessly on Telegram mobile app
-- 🔄 **Automatic Timestamps**: Every entry includes when it was logged
-- 📋 **Entry History**: View your last 5 work entries with `/log`
-- 🎯 **Category Filtering**: Track hours by specific projects or clients
-- 📅 **Flexible Dating**: Log work for any day, not just today
-- 💬 **Conversational Interface**: No complex forms, just natural messages
-- 🛡️ **Error Handling**: Graceful error messages and recovery
-- 🚀 **Zero Configuration**: Works out of the box after environment setup
-- 📊 **Multiple Time Periods**: Weekly and monthly summaries available
-- 🔐 **Privacy First**: Secure cloud database with connection pooling
 
 ## Commands
 
@@ -41,38 +30,6 @@ A Node.js Telegram bot that allows you to log your daily work hours through natu
 - `/validate` - Check database integrity and health
 - `/reset confirm` - Reset database (⚠️ DESTRUCTIVE - requires confirmation)
 - `/backup` - Create backup of all data
-
-### 🔄 Database Reset Feature
-
-The bot includes a secure database reset functionality for starting fresh:
-
-#### How to Reset
-1. **Check current data**: Use `/stats` to see what will be deleted
-2. **Initiate reset**: Send `/reset` (without confirm) to see warning
-3. **Confirm reset**: Send `/reset confirm` to proceed
-
-#### Safety Features
-- ⚠️ **Confirmation required**: Must type `/reset confirm` exactly
-- 💾 **Automatic backup**: Creates backup before deletion
-- 📊 **Data preview**: Shows what will be deleted
-- 🚫 **No accidental resets**: Won't work without explicit confirmation
-
-#### Use Cases
-- 🆕 **Fresh start**: Beginning new job or project
-- 🧪 **Testing**: Clearing test data
-- 🧹 **Data cleanup**: Removing old or incorrect entries
-- 🔄 **Migration**: Preparing for data import
-
-**Example Reset Flow:**
-```
-You: /reset
-Bot: Shows warning with current data stats
-
-You: /reset confirm  
-Bot: ✅ Database reset complete! Deleted X entries, backup created.
-```
-
-📖 **For detailed reset instructions, see [RESET_GUIDE.md](RESET_GUIDE.md)**
 
 ## Example Messages
 
@@ -104,20 +61,14 @@ Bot: ✅ Database reset complete! Deleted X entries, backup created.
 
 ### 4. Environment Configuration
 
-1. Copy `.env.example` to `.env`:
-   ```bash
-   cp .env.example .env
-   ```
+Create a `.env` file in the project root with your values:
 
-2. Edit `.env` with your values:
-   ```env
-   TELEGRAM_BOT_TOKEN=your_bot_token_here
-   AUTHORIZED_USER_ID=your_telegram_user_id_here
-   MONGODB_URI=your_mongodb_connection_string
-   DATABASE_NAME=workhoursbot
-   PORT=3000
-   NODE_ENV=production
-   ```
+```env
+TELEGRAM_BOT_TOKEN=your_bot_token_here
+AUTHORIZED_USER_ID=your_telegram_user_id_here
+MONGODB_URI=your_mongodb_connection_string
+DATABASE_NAME=workhoursbot
+```
 
 ### 5. Local Development
 
@@ -128,7 +79,7 @@ Bot: ✅ Database reset complete! Deleted X entries, backup created.
 
 2. Start the bot:
    ```bash
-   npm start
+   node bot.js
    ```
 
 3. Message your bot on Telegram to test
@@ -143,20 +94,14 @@ Bot: ✅ Database reset complete! Deleted X entries, backup created.
 4. Deploy automatically
 5. Set your bot webhook URL to: `https://your-vercel-domain.vercel.app/api/bot`
 
-### Deploy to Railway
+### Webhook Setup
 
-1. Fork/clone this repository
-2. Connect your GitHub repo to [Railway](https://railway.app)
-3. Add environment variables in Railway dashboard
-4. Deploy automatically
-
-### Deploy to Render
-
-1. Fork/clone this repository
-2. Create a new Web Service on [Render](https://render.com)
-3. Connect your GitHub repo
-4. Add environment variables
-5. Deploy
+Set your webhook URL in Telegram:
+```bash
+curl -X POST "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook" \
+     -H "Content-Type: application/json" \
+     -d '{"url": "https://your-vercel-domain.vercel.app/api/bot"}'
+```
 
 ## Database Schema
 
@@ -184,48 +129,45 @@ The bot uses MongoDB with the following collection structure:
 ├── database.js           # MongoDB operations and connection management
 ├── messageParser.js      # Natural language parsing logic
 ├── commands.js           # Bot command handlers and responses
-├── index.js              # Local development entry point
 ├── package.json          # Dependencies and scripts
 ├── vercel.json           # Vercel deployment configuration
-├── .env.example          # Environment variables template
-├── README.md             # Main documentation
-└── RESET_GUIDE.md        # Database reset functionality guide
+├── .env                  # Environment variables (create from template)
+└── README.md             # This documentation
 ```
 
-## Key Features Explained
+## Key Features
 
 ### Natural Language Processing
 The bot intelligently parses messages to extract:
 - **Time amounts**: "6 hours", "5.5 hrs", "3h"
-- **Dates**: "today", "yesterday", "Monday", "2025-01-15"
+- **Dates**: "today", "yesterday", "Monday", specific dates
 - **Project tags**: Automatically detects project names and categories
 
 ### Pay Cycle Tracking
 - **14-day cycles**: Automatically tracks bi-weekly periods
-- **Current cycle**: Starts with your first logged entry
-- **Flexible updates**: Easy to adjust cycle dates when needed
+- **Configurable start date**: Set in `commands.js` (PAY_CYCLE_START)
+- **Current cycle**: View with `/paycycle` command
 
-### MongoDB Integration
-- **Connection pooling**: Efficient database connections for serverless
-- **Automatic reconnection**: Handles connection drops gracefully
-- **Cloud-ready**: Optimized for MongoDB Atlas and serverless deployment
+### Database Management
+- **Connection pooling**: Efficient MongoDB connections for serverless
+- **Validation tools**: Built-in database integrity checks
+- **Backup system**: Create backups before destructive operations
+- **Reset functionality**: Secure database reset with confirmation
 
-### Webhook Architecture
-- **Serverless optimized**: Perfect for Vercel, Netlify, and similar platforms
-- **No polling**: Uses Telegram webhooks for instant message processing
-- **Stateless**: Each request is independent, ideal for serverless functions
+## Database Reset Feature
 
-## Contributing
+The bot includes a secure database reset functionality:
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly with MongoDB connection
-5. Submit a pull request
+### How to Reset
+1. **Check current data**: Use `/stats` to see what will be deleted
+2. **Initiate reset**: Send `/reset` (shows warning with data preview)
+3. **Confirm reset**: Send `/reset confirm` to proceed
 
-## License
-
-MIT License - feel free to modify and use for your own projects.
+### Safety Features
+- ⚠️ **Confirmation required**: Must type `/reset confirm` exactly
+- 💾 **Automatic backup**: Creates backup before deletion
+- 📊 **Data preview**: Shows what will be deleted
+- 🚫 **No accidental resets**: Won't work without explicit confirmation
 
 ## Troubleshooting
 
@@ -239,7 +181,7 @@ MIT License - feel free to modify and use for your own projects.
 - Verify `MONGODB_URI` connection string is correct
 - Check MongoDB Atlas network access settings
 - Ensure database user has read/write permissions
-- Test MongoDB connection independently
+- Use `/validate` command to check database integrity
 
 ### Deployment issues
 - Make sure all environment variables are set on your hosting platform
@@ -247,19 +189,22 @@ MIT License - feel free to modify and use for your own projects.
 - Verify MongoDB connection from your hosting environment
 - Test webhook URL responds to POST requests
 
-### Webhook Setup
-For Vercel deployment, set your webhook URL in Telegram:
-```bash
-curl -X POST "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook" \
-     -H "Content-Type: application/json" \
-     -d '{"url": "https://your-vercel-domain.vercel.app/api/bot"}'
-```
+## Dependencies
+
+- `node-telegram-bot-api` - Telegram Bot API wrapper
+- `mongoose` - MongoDB object modeling
+- `moment` - Date and time manipulation
+- `dotenv` - Environment variable management
+
+## License
+
+MIT License - feel free to modify and use for your own projects.
 
 ## Support
 
 If you encounter issues:
 1. Check the troubleshooting section above
-2. Review server/function logs for error messages
-3. Test MongoDB connection independently
-4. Ensure webhook URL is properly configured
-5. Verify all environment variables are set correctly
+2. Use `/validate` to check database integrity
+3. Review server/function logs for error messages
+4. Ensure all environment variables are set correctly
+5. Test MongoDB connection independently
