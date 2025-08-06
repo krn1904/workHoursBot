@@ -232,7 +232,8 @@ class DailyReminder {
       console.log('📨 Sending daily work hours reminder...');
       
       // Check if user already logged hours today (if database is available)
-      if (this.config.skipIfAlreadyLogged && this.database) {
+      // Temporarily disabled for testing - normally this prevents spam
+      if (false && this.config.skipIfAlreadyLogged && this.database) {
         const today = moment().format('YYYY-MM-DD');
         const todayEntries = await this.database.getTodayEntries(today);
         
