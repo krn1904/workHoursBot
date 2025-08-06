@@ -1,6 +1,6 @@
 name: Daily Work Hours Reminder
 
-# TESTING MODE: Trigger on push to feature branch and manual dispatch
+# Enable automatic daily reminders and manual testing
 on:
   # Enable manual testing
   workflow_dispatch:
@@ -10,6 +10,18 @@ on:
         required: false
         default: 'true'
   
+  # PRODUCTION SCHEDULE - Automatic daily reminders
+  # Runs 4 times daily with 25% chance each = ~1 reminder per day
+  schedule:
+    # 3:00 PM UTC (15:00)
+    - cron: '0 15 * * 1-5'
+    # 5:30 PM UTC (17:30) 
+    - cron: '30 17 * * 1-5'
+    # 7:45 PM UTC (19:45)
+    - cron: '45 19 * * 1-5'
+    # 9:15 PM UTC (21:15)
+    - cron: '15 21 * * 1-5'
+  
   # Trigger on push to current feature branch for testing
   push:
     branches:
@@ -17,55 +29,72 @@ on:
     paths:
       - '.github/workflows/daily-reminder.yml'
       - 'api/reminder.js'
-  
-  # PRODUCTION SCHEDULE (commented out for testing)
-  # Uncomment these when ready to deploy to main branch
-  # schedule:
-  #   - cron: '0 15 * * 1-5'
-  #   - cron: '30 17 * * 1-5'
-  #   - cron: '45 19 * * 1-5'
-  #   - cron: '15 21 * * 1-5'
 
 jobs:
   send-reminder:
     runs-on: ubuntu-latest
     
     steps:
-      - name: Test Mode Check
+      - name: Check Mode
         run: |
-          echo "🧪 Running in TEST MODE on feature branch"
-          echo "Branch: ${{ github.ref_name }}"
-          echo "Test input: ${{ github.event.inputs.test_mode }}"
-      
-      - name: Send Test Reminder
-        run: |
-          echo "🎯 Testing reminder API call..."
-          
-          # Call your bot's reminder endpoint
-          response=$(curl -X POST "${{ secrets.BOT_WEBHOOK_URL }}/api/reminder" \
-            -H "Content-Type: application/json" \
-            -H "Authorization: Bearer ${{ secrets.REMINDER_SECRET }}" \
-            -d '{
-              "action": "send_daily",
-              "user_id": "${{ secrets.AUTHORIZED_USER_ID }}",
-              "source": "github_actions_test"
-            }' \
-            -w "%{http_code}" \
-            -s)
-            
-          echo "Response: $response"
-          
-          if [[ "$response" == *"200" ]]; then
-            echo "✅ Test reminder sent successfully!"
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            echo "🔔 Running PRODUCTION scheduled reminder"
           else
-            echo "❌ Test failed with response: $response"
-            exit 1
+            echo "🧪 Running in TEST MODE"
+          fi
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Event: ${{ github.event_name }}"
+      
+      - name: Send Reminder
+        run: |
+          # Generate random number for production mode
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            RANDOM_NUM=$((RANDOM % 4))
+            echo "🎲 Random selection: $RANDOM_NUM (need 0 to send)"
+            
+            if [ $RANDOM_NUM -eq 0 ]; then
+              echo "🎯 Sending production reminder..."
+              SEND_REMINDER=true
+            else
+              echo "⏭️ Skipping reminder this time (random selection)"
+              SEND_REMINDER=false
+            fi
+          else
+            echo "🧪 Test mode - always sending reminder"
+            SEND_REMINDER=true
+          fi
+          
+          if [ "$SEND_REMINDER" = "true" ]; then
+            # Call your bot's reminder endpoint
+            response=$(curl -X POST "${{ secrets.BOT_WEBHOOK_URL }}/api/reminder" \
+              -H "Content-Type: application/json" \
+              -H "Authorization: Bearer ${{ secrets.REMINDER_SECRET }}" \
+              -d '{
+                "action": "send_daily",
+                "user_id": "${{ secrets.AUTHORIZED_USER_ID }}",
+                "source": "github_actions_production"
+              }' \
+              -w "%{http_code}" \
+              -s)
+              
+            echo "Response: $response"
+            
+            if [[ "$response" == *"200" ]]; then
+              echo "✅ Reminder sent successfully!"
+            else
+              echo "❌ Failed with response: $response"
+              exit 1
+            fi
+          else
+            echo "✅ Completed without sending (random skip)"
           fi
 
-      - name: Test Complete
+      - name: Summary
+        if: always()
         run: |
-          echo "🎉 GitHub Actions test completed!"
-          echo "📝 Next steps:"
-          echo "1. Check if you received the test reminder on Telegram"
-          echo "2. If working, uncomment the schedule in the workflow file"
-          echo "3. Merge to main branch when ready for production"
+          echo "🕒 Reminder check completed at $(date)"
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            echo "📅 Next check in 2-3 hours (production mode)"
+          else
+            echo "🧪 This was a test run"
+          fi

@@ -81,7 +81,7 @@ module.exports = async (req, res) => {
     }
 
     // Initialize bot instance
-    const bot = new TelegramBot(token);
+    const bot = new TelegramBot(token, { polling: false });
 
     // Initialize database for checking if already logged
     const Database = require('../database');
@@ -89,11 +89,13 @@ module.exports = async (req, res) => {
 
     // For testing from GitHub Actions, force the reminder
     const isTestMode = source === 'github_actions_test' || source === 'manual_test';
+    const isProduction = source === 'github_actions_production';
     
     // Send the scheduled reminder
+    // Force reminder for tests, use normal time checks for production
     await sendScheduledReminder(bot, authorizedUserId, db, isTestMode);
 
-    console.log(`✅ Daily reminder triggered successfully from ${source || 'external'} ${isTestMode ? '(TEST MODE)' : ''}`);
+    console.log(`✅ Daily reminder triggered successfully from ${source || 'external'} ${isTestMode ? '(TEST MODE)' : isProduction ? '(PRODUCTION)' : ''}`);
 
     // Return success response
     return res.status(200).json({
@@ -101,7 +103,8 @@ module.exports = async (req, res) => {
       message: 'Reminder sent successfully',
       timestamp: new Date().toISOString(),
       source: source || 'external',
-      testMode: isTestMode
+      testMode: isTestMode,
+      productionMode: isProduction
     });
 
   } catch (error) {
