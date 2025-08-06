@@ -1,53 +1,71 @@
 name: Daily Work Hours Reminder
 
-# Run at random times between 3PM and 11PM UTC (15:00-23:00)
-# This schedule runs multiple times to create randomness
+# TESTING MODE: Trigger on push to feature branch and manual dispatch
 on:
-  schedule:
-    # Run at 3:00 PM UTC (15:00)
-    - cron: '0 15 * * 1-5'
-    # Run at 5:30 PM UTC (17:30) 
-    - cron: '30 17 * * 1-5'
-    # Run at 7:45 PM UTC (19:45)
-    - cron: '45 19 * * 1-5'
-    # Run at 9:15 PM UTC (21:15)
-    - cron: '15 21 * * 1-5'
-  
-  # Allow manual triggering for testing
+  # Enable manual testing
   workflow_dispatch:
+    inputs:
+      test_mode:
+        description: 'Run in test mode'
+        required: false
+        default: 'true'
+  
+  # Trigger on push to current feature branch for testing
+  push:
+    branches:
+      - 'Feature/SetupReminder'
+    paths:
+      - '.github/workflows/daily-reminder.yml'
+      - 'api/reminder.js'
+  
+  # PRODUCTION SCHEDULE (commented out for testing)
+  # Uncomment these when ready to deploy to main branch
+  # schedule:
+  #   - cron: '0 15 * * 1-5'
+  #   - cron: '30 17 * * 1-5'
+  #   - cron: '45 19 * * 1-5'
+  #   - cron: '15 21 * * 1-5'
 
 jobs:
   send-reminder:
     runs-on: ubuntu-latest
     
     steps:
-      - name: Send Random Reminder
+      - name: Test Mode Check
         run: |
-          # Generate random number to decide if reminder should be sent
-          RANDOM_NUM=$((RANDOM % 4))
+          echo "🧪 Running in TEST MODE on feature branch"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Test input: ${{ github.event.inputs.test_mode }}"
+      
+      - name: Send Test Reminder
+        run: |
+          echo "🎯 Testing reminder API call..."
           
-          # Only send reminder 25% of the time (1 out of 4 runs)
-          if [ $RANDOM_NUM -eq 0 ]; then
-            echo "🎯 Sending daily reminder..."
+          # Call your bot's reminder endpoint
+          response=$(curl -X POST "${{ secrets.BOT_WEBHOOK_URL }}/api/reminder" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.REMINDER_SECRET }}" \
+            -d '{
+              "action": "send_daily",
+              "user_id": "${{ secrets.AUTHORIZED_USER_ID }}",
+              "source": "github_actions_test"
+            }' \
+            -w "%{http_code}" \
+            -s)
             
-            # Call your bot's reminder endpoint
-            curl -X POST "${{ secrets.BOT_WEBHOOK_URL }}/api/reminder" \
-              -H "Content-Type: application/json" \
-              -H "Authorization: Bearer ${{ secrets.REMINDER_SECRET }}" \
-              -d '{
-                "action": "send_daily",
-                "user_id": "${{ secrets.AUTHORIZED_USER_ID }}",
-                "source": "github_actions"
-              }' \
-              --fail --silent --show-error
-              
-            echo "✅ Reminder sent successfully"
+          echo "Response: $response"
+          
+          if [[ "$response" == *"200" ]]; then
+            echo "✅ Test reminder sent successfully!"
           else
-            echo "⏭️ Skipping reminder this time (random selection)"
+            echo "❌ Test failed with response: $response"
+            exit 1
           fi
 
-      - name: Log Reminder Attempt
-        if: always()
+      - name: Test Complete
         run: |
-          echo "🕒 Reminder check completed at $(date)"
-          echo "📅 Next potential reminder in ~2-3 hours"
+          echo "🎉 GitHub Actions test completed!"
+          echo "📝 Next steps:"
+          echo "1. Check if you received the test reminder on Telegram"
+          echo "2. If working, uncomment the schedule in the workflow file"
+          echo "3. Merge to main branch when ready for production"
