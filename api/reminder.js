@@ -83,9 +83,18 @@ module.exports = async (req, res) => {
     // Initialize bot instance
     const bot = new TelegramBot(token, { polling: false });
 
-    // Initialize database for checking if already logged
-    const Database = require('../src/bot/services/database');
-    const db = new Database();
+    // Initialize database for checking if already logged (optional)
+    let db = null;
+    if (process.env.MONGODB_URI) {
+      try {
+        const Database = require('../database');
+        db = new Database();
+      } catch (e) {
+        console.warn('⚠️ Database module not available, continuing without DB check');
+      }
+    } else {
+      console.log('ℹ️ MONGODB_URI not set; reminder will be sent without DB check');
+    }
 
     // For testing from GitHub Actions, force the reminder
     const isTestMode = source === 'github_actions_test' || source === 'manual_test';
