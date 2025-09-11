@@ -66,6 +66,13 @@ class MessageParser {
       'the', 'and', 'for', 'was', 'did', 'today', 'yesterday', 'hours', 
       'hrs', 'worked', 'working', 'doing', 'some', 'more', 'time'
     ];
+
+    /**
+     * Date format preference
+     * DMY = prefer DD/MM and DD-MM (Australian/most of world)
+     * MDY = prefer MM/DD and MM-DD (US)
+     */
+    this.dateFormatPreference = (process.env.DATE_FORMAT_PREFERENCE || 'DMY').toUpperCase();
   }
 
   /**
@@ -157,9 +164,12 @@ class MessageParser {
       } 
       // Try formats with year (MM/DD/YYYY, DD/MM/YYYY, etc.)
       else if (/^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4}$/.test(dateStr)) {
-        // Try both MM/DD/YYYY and DD/MM/YYYY formats
-        const formats = ['MM/DD/YYYY', 'DD/MM/YYYY', 'MM-DD-YYYY', 'DD-MM-YYYY'];
-        for (const format of formats) {
+        // Prefer formats based on configured preference and detected separator
+        const sep = dateStr.includes('-') ? '-' : '/';
+        const dmy = sep === '-' ? 'DD-MM-YYYY' : 'DD/MM/YYYY';
+        const mdy = sep === '-' ? 'MM-DD-YYYY' : 'MM/DD/YYYY';
+        const orderedFormats = this.dateFormatPreference === 'MDY' ? [mdy, dmy] : [dmy, mdy];
+        for (const format of orderedFormats) {
           parsedDate = moment(dateStr, format, true);
           if (parsedDate.isValid()) break;
         }
@@ -167,14 +177,12 @@ class MessageParser {
       // Try formats without year (MM/DD, DD/MM - assume current year)
       else if (/^\d{1,2}[\/\-]\d{1,2}$/.test(dateStr)) {
         const currentYear = moment().year();
-        // Preserve original separator when appending year
-        const separator = dateStr.includes('-') ? '-' : '/';
-        const dateWithYear = `${dateStr}${separator}${currentYear}`;
-        // Try formats matching both separators
-        const formats = separator === '-'
-          ? ['MM-DD-YYYY', 'DD-MM-YYYY']
-          : ['MM/DD/YYYY', 'DD/MM/YYYY'];
-        for (const format of formats) {
+        const sep = dateStr.includes('-') ? '-' : '/';
+        const dateWithYear = `${dateStr}${sep}${currentYear}`;
+        const dmy = sep === '-' ? 'DD-MM-YYYY' : 'DD/MM/YYYY';
+        const mdy = sep === '-' ? 'MM-DD-YYYY' : 'MM/DD/YYYY';
+        const orderedFormats = this.dateFormatPreference === 'MDY' ? [mdy, dmy] : [dmy, mdy];
+        for (const format of orderedFormats) {
           parsedDate = moment(dateWithYear, format, true);
           if (parsedDate.isValid()) break;
         }
