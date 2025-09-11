@@ -203,6 +203,8 @@ Processes bot commands and returns formatted responses.
 | /category | tag | Hours for specific category |
 | /paycycle | None | Current pay cycle summary |
 | /help | None | Help message |
+| /delete | [n] | Preview last n entries (default 5, max 10) |
+| /delete confirm | 1,3,4 | Delete specific items by preview index (1–10) |
 
 ### handleWorkLogMessage(text, chatId)
 
@@ -536,6 +538,19 @@ Shows current pay cycle summary.
 Returns comprehensive help information.
 
 **Returns**: `String` - Formatted help message
+
+### Deletion (Index-Based)
+
+#### handleDelete(args)
+
+Index-based deletion flow.
+
+**Usage:**
+- `/delete [n]` – Preview last n entries (default 5, max 10) with indices
+- `/delete show 10` – Preview last 10 entries
+- `/delete confirm 1,3,4` – Delete specific items by preview index (1–10)
+
+**Returns**: `Promise<String>` – Preview or deletion summary
 
 ## 📊 Response Formats
 
