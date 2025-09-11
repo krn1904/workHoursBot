@@ -167,8 +167,13 @@ class MessageParser {
       // Try formats without year (MM/DD, DD/MM - assume current year)
       else if (/^\d{1,2}[\/\-]\d{1,2}$/.test(dateStr)) {
         const currentYear = moment().year();
-        const dateWithYear = dateStr + '/' + currentYear;
-        const formats = ['MM/DD/YYYY', 'DD/MM/YYYY', 'MM-DD-YYYY', 'DD-MM-YYYY'];
+        // Preserve original separator when appending year
+        const separator = dateStr.includes('-') ? '-' : '/';
+        const dateWithYear = `${dateStr}${separator}${currentYear}`;
+        // Try formats matching both separators
+        const formats = separator === '-'
+          ? ['MM-DD-YYYY', 'DD-MM-YYYY']
+          : ['MM/DD/YYYY', 'DD/MM/YYYY'];
         for (const format of formats) {
           parsedDate = moment(dateWithYear, format, true);
           if (parsedDate.isValid()) break;
