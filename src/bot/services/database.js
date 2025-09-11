@@ -225,6 +225,89 @@ class Database {
   }
 
   /**
+   * Deletes the most recent work entries
+   *
+   * Finds the latest N entries by timestamp and deletes them.
+   * Returns a summary including the deleted entry details.
+   *
+   * @param {number} limit - Number of recent entries to delete (default: 5)
+   * @returns {Promise<Object>} { deleted, entries: [{id,date,hours,tag,timestamp}] }
+   */
+  async deleteLastEntries(limit = 5) {
+    try {
+      await this.connectToMongoDB();
+
+      const n = Math.max(1, Math.min(Number(limit) || 5, 10));
+      const entries = await WorkEntry.find()
+        .sort({ timestamp: -1 })
+        .limit(n)
+        .lean();
+
+      if (entries.length === 0) {
+        return { deleted: 0, entries: [] };
+      }
+
+      const ids = entries.map(e => e._id);
+      const deleteResult = await WorkEntry.deleteMany({ _id: { $in: ids } });
+
+      return {
+        deleted: deleteResult.deletedCount || 0,
+        entries: entries.map(e => ({
+          id: e._id,
+          date: e.date,
+          hours: e.hours,
+          tag: e.tag || null,
+          timestamp: e.timestamp
+        }))
+      };
+    } catch (error) {
+      console.error('Error deleting last entries:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Deletes specific entries by their MongoDB ObjectIDs
+   *
+   * This is used by the selective delete flow where the user picks
+   * specific items from the preview list (positions 1..10 mapped to IDs).
+   *
+   * @param {Array<string>} ids - Array of entry IDs to delete
+   * @returns {Promise<Object>} { deleted, entries: [{id,date,hours,tag,timestamp}] }
+   */
+  async deleteEntriesByIds(ids) {
+    try {
+      await this.connectToMongoDB();
+
+      if (!Array.isArray(ids) || ids.length === 0) {
+        return { deleted: 0, entries: [] };
+      }
+
+      // Fetch entries first for reporting
+      const entries = await mongoose.model('WorkEntry').find({ _id: { $in: ids } }).lean();
+      if (entries.length === 0) {
+        return { deleted: 0, entries: [] };
+      }
+
+      const deleteResult = await mongoose.model('WorkEntry').deleteMany({ _id: { $in: ids } });
+
+      return {
+        deleted: deleteResult.deletedCount || 0,
+        entries: entries.map(e => ({
+          id: e._id,
+          date: e.date,
+          hours: e.hours,
+          tag: e.tag || null,
+          timestamp: e.timestamp
+        }))
+      };
+    } catch (error) {
+      console.error('Error deleting entries by ids:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Calculates total hours worked between two dates (inclusive)
    * 
    * Uses MongoDB aggregation pipeline for efficient calculation

@@ -87,6 +87,104 @@ class Commands {
   }
 
   /**
+   * Handles /delete command - preview and confirm deletion of recent entries
+   *
+   * Usage:
+   *  - /delete [n]           -> Preview delete of last n (default 5, max 10)
+   *  - /delete confirm [n]   -> Confirm and delete
+   *
+   * @param {string} args - Arguments after the command
+   * @returns {Promise<string>} Formatted response
+   */
+  async handleDelete(args = '') {
+    try {
+      if (!this.db) {
+        return '❌ Database not available. Cannot delete entries.';
+      }
+
+      const parts = (args || '').trim().split(/\s+/).filter(Boolean);
+      const isConfirm = parts[0] && parts[0].toLowerCase() === 'confirm';
+
+      // Index-only flow:
+      // - /delete [n] or /delete show [n] -> preview last n (default 5, max 10)
+      // - /delete confirm 1,3,4 -> delete specific items by indices (mapped to last 10 entries)
+
+      if (!isConfirm) {
+        // /delete, /delete 7, or /delete show 7
+        const showMode = parts[0] && parts[0].toLowerCase() === 'show';
+        const numStr = showMode ? parts[1] : parts[0];
+        let n = parseInt(numStr, 10);
+        if (isNaN(n) || n <= 0) n = 5;
+        n = Math.min(Math.max(n, 1), 10);
+
+        const entries = await this.db.getLastEntries(n);
+        if (entries.length === 0) {
+          return '🗑️ No entries found to delete.';
+        }
+
+        let preview = `🗑️ *Delete Preview* — Last ${entries.length} entr${entries.length === 1 ? 'y' : 'ies'}\n\n`;
+        entries.forEach((e, i) => {
+          const hours = this.parser.formatHours(e.hours);
+          const tag = e.tag ? ` 🏷️ [${e.tag}]` : '';
+          const date = moment(e.date).format('YYYY-MM-DD');
+          const time = moment(e.timestamp).format('HH:mm');
+          preview += `${i + 1}. ${hours}h${tag} — ${date} (🕒 ${time})\n`;
+        });
+
+        preview += `\nTo delete, reply with indices: \`/delete confirm 1,3,4\`\n` +
+                   `Tip: Use \`/delete show 10\` to preview the 10 most recent entries before selecting indices.`;
+        return preview;
+      }
+
+      // Confirm path
+      const confirmArg = parts[1];
+      if (!confirmArg) {
+        return '❌ Please provide indices to delete. Example: `/delete confirm 1,3,4`';
+      }
+
+      if (/^\d+(?:,\d+)*$/.test(confirmArg)) {
+        // Selective indices provided
+        const indices = confirmArg.split(',').map(s => parseInt(s, 10)).filter(n => n >= 1 && n <= 10);
+        if (indices.length === 0) {
+          return '❌ No valid indices provided. Use numbers 1-10 separated by commas.';
+        }
+
+        // Build a mapping from preview to IDs by fetching last 10
+        const previewEntries = await this.db.getLastEntries(10);
+        const idsToDelete = indices
+          .map(idx => previewEntries[idx - 1])
+          .filter(Boolean)
+          .map(e => e._id || e.id);
+
+        if (idsToDelete.length === 0) {
+          return 'ℹ️ Nothing matched those indices.';
+        }
+
+        const result = await this.db.deleteEntriesByIds(idsToDelete);
+        if (!result.deleted) {
+          return 'ℹ️ Nothing deleted.';
+        }
+
+        let resp = `✅ Deleted ${result.deleted} entr${result.deleted === 1 ? 'y' : 'ies'}:\n\n`;
+        result.entries.forEach((e, i) => {
+          const hours = this.parser.formatHours(e.hours);
+          const tag = e.tag ? ` 🏷️ [${e.tag}]` : '';
+          const date = moment(e.date).format('YYYY-MM-DD');
+          const time = moment(e.timestamp).format('HH:mm');
+          resp += `${i + 1}. ${hours}h${tag} — ${date} (🕒 ${time})\n`;
+        });
+        return resp;
+      }
+
+      // If confirmArg is not a comma-separated list of indices, reject
+      return '❌ Invalid confirmation format. Use indices only, e.g., `/delete confirm 1,2,5`';
+    } catch (error) {
+      console.error('Error in handleDelete:', error);
+      return '❌ Error deleting entries. Please try again.';
+    }
+  }
+
+  /**
    * Provides access to the current pay cycle calculation
    * 
    * @returns {Object} Current pay cycle start and end dates
@@ -395,6 +493,8 @@ class Commands {
            `• /log - Last 5 work entries with timestamps\n` +
            `• /category <tag> - Hours for specific category/project\n` +
            `• /paycycle - Hours for current pay cycle (bi-weekly)\n` +
+           `• /delete [n] - Preview last n entries (default 5, max 10)\n` +
+           `• /delete confirm 1,3,4 - Delete specific items by preview index (1-10)\n` +
            `• /help - Show this help message\n\n` +
            `🔧 *Admin Commands:*\n` +
            `• /stats - Database statistics and overview\n` +

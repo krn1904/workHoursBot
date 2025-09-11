@@ -228,13 +228,7 @@ After deployment, configure your bot to use webhooks:
 
 ### 1. Set Webhook URL
 
-#### Method A: Using BotFather (Recommended)
-1. Message @BotFather on Telegram
-2. Send `/setwebhook`
-3. Select your bot
-4. Send your webhook URL: `https://your-app-domain.com/api/bot`
-
-#### Method B: Using Telegram API
+Use the Telegram API (recommended; BotFather may not expose a setwebhook option):
 ```bash
 curl -X POST "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook" \
      -H "Content-Type: application/json" \
@@ -260,6 +254,11 @@ curl "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getWebhookInfo"
   }
 }
 ```
+
+#### Production vs Preview URLs (Vercel)
+- Vercel creates preview deployments per branch/commit.
+- To run your bot in production, set the webhook to your production domain (e.g., `https://<project>.vercel.app/api/bot` or your custom domain), not a preview URL (which looks like `...-git-<branch>-...vercel.app`).
+- After promoting/merging your branch to production, re-run the `setWebhook` with the production URL.
 
 ## 🧪 Testing & Verification
 

@@ -43,9 +43,9 @@ module.exports = async (req, res) => {
     // Validate required environment variables
     const token = process.env.TELEGRAM_BOT_TOKEN;
     const authorizedUserId = process.env.AUTHORIZED_USER_ID;
-    const mongoUri = process.env.MONGODB_URI;
 
-    if (!token || !authorizedUserId || !mongoUri) {
+  // Only require token and authorizedUserId at this layer. DB may be optional for some commands.
+  if (!token || !authorizedUserId) {
       console.error('Missing required environment variables');
       return res.status(500).json({ error: 'Configuration error' });
     }
@@ -55,12 +55,20 @@ module.exports = async (req, res) => {
       console.log('Creating new TelegramBot instance...');
       bot = new TelegramBot(token);
       
-      // Set up bot handlers if not already done
-      if (!isSetup) {
-        console.log('Setting up bot handlers...');
-        await setupWorkLoggerBot(bot);
+      // In serverless, avoid heavy setup/DB connection on cold start.
+      // Only run setup when explicitly enabled.
+      if (!isSetup && process.env.ENABLE_BOT_SETUP === 'true') {
+        try {
+          console.log('Setting up bot handlers (explicitly enabled)...');
+          await setupWorkLoggerBot(bot);
+          console.log('Bot setup completed successfully');
+        } catch (e) {
+          console.warn('⚠️ Bot setup skipped/failed:', e.message);
+        }
         isSetup = true;
-        console.log('Bot setup completed successfully');
+      } else {
+        console.log('⏭️ Skipping bot setup on serverless cold start (set ENABLE_BOT_SETUP=true to enable).');
+        isSetup = true;
       }
     }
 
@@ -168,52 +176,118 @@ async function handleCommand(text, chatId) {
   const arg = text.split(' ').slice(1).join(' ');
   
   try {
-    // Initialize database and command handler instances
-    const Database = require('../src/bot/services/database');
+    // Initialize parser (no DB needed for some commands)
     const MessageParser = require('../src/bot/handlers/messageParser');
     const Commands = require('../src/bot/handlers/commands');
-    
-    const db = new Database();
-    await db.connectToMongoDB();
     const parser = new MessageParser();
-    const commands = new Commands(db, parser);
-    
+
     let response;
     
     // Route commands to appropriate handlers
     switch (command) {
       case '/today':
-        response = await commands.handleToday();
+        {
+          const Database = require('../src/bot/services/database');
+          const db = new Database();
+          await db.connectToMongoDB();
+          const commands = new Commands(db, parser);
+          response = await commands.handleToday();
+        }
         break;
       case '/summary':
-        response = await commands.handleSummary();
+        {
+          const Database = require('../src/bot/services/database');
+          const db = new Database();
+          await db.connectToMongoDB();
+          const commands = new Commands(db, parser);
+          response = await commands.handleSummary();
+        }
         break;
       case '/log':
-        response = await commands.handleLog();
+        {
+          const Database = require('../src/bot/services/database');
+          const db = new Database();
+          await db.connectToMongoDB();
+          const commands = new Commands(db, parser);
+          response = await commands.handleLog();
+        }
         break;
       case '/category':
-        response = await commands.handleCategory(arg);
+        {
+          const Database = require('../src/bot/services/database');
+          const db = new Database();
+          await db.connectToMongoDB();
+          const commands = new Commands(db, parser);
+          response = await commands.handleCategory(arg);
+        }
         break;
       case '/paycycle':
-        response = await commands.handlePayCycle();
+        {
+          const Database = require('../src/bot/services/database');
+          const db = new Database();
+          await db.connectToMongoDB();
+          const commands = new Commands(db, parser);
+          response = await commands.handlePayCycle();
+        }
+        break;
+      case '/delete':
+        {
+          const Database = require('../src/bot/services/database');
+          const db = new Database();
+          await db.connectToMongoDB();
+          const commands = new Commands(db, parser);
+          response = await commands.handleDelete(arg);
+        }
         break;
       case '/help':
-        response = commands.getHelpMessage();
+        {
+          // Help doesn't need DB
+          const commands = new Commands(null, parser);
+          response = commands.getHelpMessage();
+        }
         break;
       case '/stats':
-        response = await commands.handleStats();
+        {
+          const Database = require('../src/bot/services/database');
+          const db = new Database();
+          await db.connectToMongoDB();
+          const commands = new Commands(db, parser);
+          response = await commands.handleStats();
+        }
         break;
       case '/validate':
-        response = await commands.handleValidate();
+        {
+          const Database = require('../src/bot/services/database');
+          const db = new Database();
+          await db.connectToMongoDB();
+          const commands = new Commands(db, parser);
+          response = await commands.handleValidate();
+        }
         break;
       case '/reset':
-        response = await commands.handleReset(arg);
+        {
+          const Database = require('../src/bot/services/database');
+          const db = new Database();
+          await db.connectToMongoDB();
+          const commands = new Commands(db, parser);
+          response = await commands.handleReset(arg);
+        }
         break;
       case '/backup':
-        response = await commands.handleBackup();
+        {
+          const Database = require('../src/bot/services/database');
+          const db = new Database();
+          await db.connectToMongoDB();
+          const commands = new Commands(db, parser);
+          response = await commands.handleBackup();
+        }
         break;
       case '/reminder':
-        response = await commands.handleReminder(arg);
+        {
+          // Reminder info/test output doesn't need DB
+          const commands = new Commands(null, parser);
+          response = await commands.handleReminder(arg);
+        }
         break;
       default:
         response = `❌ Unknown command: ${command}\n\nUse /help to see available commands.`;
@@ -250,6 +324,13 @@ async function handleWorkLogMessage(text, chatId) {
 
   if (parsed.isValidWorkLog) {
     try {
+      // If DB isn't configured, inform the user gracefully instead of failing silently
+      if (!process.env.MONGODB_URI) {
+        return {
+          chatId,
+          text: `ℹ️ I can see you logged ${parser.formatHours(parsed.hours)}h for ${parsed.date}${parsed.tag ? ` under '${parsed.tag}'` : ''}, but the database isn’t configured.\n\nPlease set MONGODB_URI in your deployment environment to save entries.`
+        };
+      }
       // Save work entry to database
       const Database = require('../src/bot/services/database');
       const db = new Database();

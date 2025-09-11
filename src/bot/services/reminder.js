@@ -234,11 +234,15 @@ class DailyReminder {
       // Check if user already logged hours today (if database is available)
       if (this.config.skipIfAlreadyLogged && this.database) {
         const today = moment().format('YYYY-MM-DD');
-        const todayEntries = await this.database.getTodayEntries(today);
-        
-        if (todayEntries && todayEntries.length > 0) {
-          console.log('✅ User already logged hours today, skipping reminder');
-          return;
+        try {
+          const todayEntries = await this.database.getTodayEntries(today);
+          if (todayEntries && todayEntries.length > 0) {
+            console.log('✅ User already logged hours today, skipping reminder');
+            return;
+          }
+        } catch (e) {
+          // If DB is not configured or unreachable, continue to send reminder
+          console.warn('⚠️ Could not check today entries (DB unavailable). Proceeding to send reminder.');
         }
       }
       

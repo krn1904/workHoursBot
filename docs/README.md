@@ -27,6 +27,10 @@ A Node.js Telegram bot that allows you to log your daily work hours through natu
 - `/paycycle` - Hours for current pay cycle (bi-weekly)
 - `/help` - Complete help message and usage guide
 
+### Deletion Commands
+- `/delete [n]` - Preview last n entries (default 5, max 10) with indices
+- `/delete confirm 1,3,4` - Delete specific items by preview index (1-10)
+
 ### Admin Commands
 - `/stats` - Database statistics and overview
 - `/validate` - Check database integrity and health
@@ -98,12 +102,19 @@ DATABASE_NAME=workhoursbot
 
 ### Webhook Setup
 
-Set your webhook URL in Telegram:
+Set your webhook URL in Telegram using the API (recommended; BotFather may not show a setwebhook option):
 ```bash
 curl -X POST "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook" \
      -H "Content-Type: application/json" \
      -d '{"url": "https://your-vercel-domain.vercel.app/api/bot"}'
 ```
+
+Verify the configuration:
+```bash
+curl "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getWebhookInfo"
+```
+
+If you use Vercel previews, make sure to set the webhook to your production domain (not a preview URL) when you want the bot to run against production code.
 
 ## Database Schema
 
