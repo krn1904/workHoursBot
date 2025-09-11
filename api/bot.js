@@ -177,8 +177,8 @@ async function handleCommand(text, chatId) {
   
   try {
     // Initialize parser (no DB needed for some commands)
-    const MessageParser = require('../messageParser');
-    const Commands = require('../commands');
+    const MessageParser = require('../src/bot/handlers/messageParser');
+    const Commands = require('../src/bot/handlers/commands');
     const parser = new MessageParser();
 
     let response;
@@ -187,7 +187,7 @@ async function handleCommand(text, chatId) {
     switch (command) {
       case '/today':
         {
-          const Database = require('../database');
+          const Database = require('../src/bot/services/database');
           const db = new Database();
           await db.connectToMongoDB();
           const commands = new Commands(db, parser);
@@ -196,7 +196,7 @@ async function handleCommand(text, chatId) {
         break;
       case '/summary':
         {
-          const Database = require('../database');
+          const Database = require('../src/bot/services/database');
           const db = new Database();
           await db.connectToMongoDB();
           const commands = new Commands(db, parser);
@@ -205,7 +205,7 @@ async function handleCommand(text, chatId) {
         break;
       case '/log':
         {
-          const Database = require('../database');
+          const Database = require('../src/bot/services/database');
           const db = new Database();
           await db.connectToMongoDB();
           const commands = new Commands(db, parser);
@@ -214,7 +214,7 @@ async function handleCommand(text, chatId) {
         break;
       case '/category':
         {
-          const Database = require('../database');
+          const Database = require('../src/bot/services/database');
           const db = new Database();
           await db.connectToMongoDB();
           const commands = new Commands(db, parser);
@@ -223,11 +223,20 @@ async function handleCommand(text, chatId) {
         break;
       case '/paycycle':
         {
-          const Database = require('../database');
+          const Database = require('../src/bot/services/database');
           const db = new Database();
           await db.connectToMongoDB();
           const commands = new Commands(db, parser);
           response = await commands.handlePayCycle();
+        }
+        break;
+      case '/delete':
+        {
+          const Database = require('../src/bot/services/database');
+          const db = new Database();
+          await db.connectToMongoDB();
+          const commands = new Commands(db, parser);
+          response = await commands.handleDelete(arg);
         }
         break;
       case '/help':
@@ -239,7 +248,7 @@ async function handleCommand(text, chatId) {
         break;
       case '/stats':
         {
-          const Database = require('../database');
+          const Database = require('../src/bot/services/database');
           const db = new Database();
           await db.connectToMongoDB();
           const commands = new Commands(db, parser);
@@ -248,7 +257,7 @@ async function handleCommand(text, chatId) {
         break;
       case '/validate':
         {
-          const Database = require('../database');
+          const Database = require('../src/bot/services/database');
           const db = new Database();
           await db.connectToMongoDB();
           const commands = new Commands(db, parser);
@@ -257,7 +266,7 @@ async function handleCommand(text, chatId) {
         break;
       case '/reset':
         {
-          const Database = require('../database');
+          const Database = require('../src/bot/services/database');
           const db = new Database();
           await db.connectToMongoDB();
           const commands = new Commands(db, parser);
@@ -266,7 +275,7 @@ async function handleCommand(text, chatId) {
         break;
       case '/backup':
         {
-          const Database = require('../database');
+          const Database = require('../src/bot/services/database');
           const db = new Database();
           await db.connectToMongoDB();
           const commands = new Commands(db, parser);
