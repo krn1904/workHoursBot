@@ -105,9 +105,9 @@ class Commands {
       const parts = (args || '').trim().split(/\s+/).filter(Boolean);
       const isConfirm = parts[0] && parts[0].toLowerCase() === 'confirm';
 
-      // Support two flows:
-      // 1) Bulk last N: /delete [n]  -> preview; /delete confirm [n] -> delete N
-      // 2) Select indices: /delete show [n] -> preview with indices; /delete confirm 1,3,4
+      // Index-only flow:
+      // - /delete [n] or /delete show [n] -> preview last n (default 5, max 10)
+      // - /delete confirm 1,3,4 -> delete specific items by indices (mapped to last 10 entries)
 
       if (!isConfirm) {
         // /delete, /delete 7, or /delete show 7
@@ -131,16 +131,15 @@ class Commands {
           preview += `${i + 1}. ${hours}h${tag} — ${date} (🕒 ${time})\n`;
         });
 
-        preview += `\nYou can:\n` +
-                   `• Confirm deleting all shown: \`/delete confirm ${entries.length}\`\n` +
-                   `• Or delete specific items by index: \`/delete confirm 1,3,4\``;
+        preview += `\nTo delete, reply with indices: \`/delete confirm 1,3,4\`\n` +
+                   `Tip: Use \`/delete show 10\` to preview the 10 most recent entries before selecting indices.`;
         return preview;
       }
 
       // Confirm path
       const confirmArg = parts[1];
       if (!confirmArg) {
-        return '❌ Please specify what to delete. Example: `/delete confirm 5` or `/delete confirm 1,3,4`';
+        return '❌ Please provide indices to delete. Example: `/delete confirm 1,3,4`';
       }
 
       if (/^\d+(?:,\d+)*$/.test(confirmArg)) {
@@ -177,25 +176,8 @@ class Commands {
         return resp;
       }
 
-      // Otherwise treat as bulk N
-      let n = parseInt(confirmArg, 10);
-      if (isNaN(n) || n <= 0) n = 5;
-      n = Math.min(Math.max(n, 1), 10);
-
-      const result = await this.db.deleteLastEntries(n);
-      if (!result.deleted) {
-        return 'ℹ️ Nothing deleted (no recent entries).';
-      }
-
-      let resp = `✅ Deleted ${result.deleted} entr${result.deleted === 1 ? 'y' : 'ies'}:\n\n`;
-      result.entries.forEach((e, i) => {
-        const hours = this.parser.formatHours(e.hours);
-        const tag = e.tag ? ` 🏷️ [${e.tag}]` : '';
-        const date = moment(e.date).format('YYYY-MM-DD');
-        const time = moment(e.timestamp).format('HH:mm');
-        resp += `${i + 1}. ${hours}h${tag} — ${date} (🕒 ${time})\n`;
-      });
-      return resp;
+      // If confirmArg is not a comma-separated list of indices, reject
+      return '❌ Invalid confirmation format. Use indices only, e.g., `/delete confirm 1,2,5`';
     } catch (error) {
       console.error('Error in handleDelete:', error);
       return '❌ Error deleting entries. Please try again.';
@@ -512,8 +494,7 @@ class Commands {
            `• /category <tag> - Hours for specific category/project\n` +
            `• /paycycle - Hours for current pay cycle (bi-weekly)\n` +
            `• /delete [n] - Preview last n entries (default 5, max 10)\n` +
-           `• /delete confirm [n] - Delete last n entries\n` +
-           `• /delete confirm 1,3,4 - Delete specific items from preview (indices 1-10)\n` +
+           `• /delete confirm 1,3,4 - Delete specific items by preview index (1-10)\n` +
            `• /help - Show this help message\n\n` +
            `🔧 *Admin Commands:*\n` +
            `• /stats - Database statistics and overview\n` +
