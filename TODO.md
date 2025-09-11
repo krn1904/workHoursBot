@@ -18,14 +18,6 @@ This file tracks requested features, verifications, and concrete action items.
     - Add command `/delete [n]` (defaults to 5, cap at 10). Show a preview and require explicit confirmation: `/delete confirm [n]`.
     - Update `/help` with usage and safeguards (only last N, confirmation required).
 
-- Log work based on a specific date (verification)
-  - Findings: Implemented via `src/bot/handlers/messageParser.js#parseMessage`.
-    - Supports: "today" (default), "yesterday", specific dates (ISO `YYYY-MM-DD`, `MM/DD`, `DD/MM`, `MM/DD/YYYY`, `DD/MM/YYYY`, `MM-DD`, `DD-MM`).
-    - Work is saved using `parsed.date` in `api/bot.js:handleWorkLogMessage`.
-  - Bug: For dash-separated dates without year (e.g., `12-15`), `_parseSpecificDate` builds `dateWithYear` with a slash instead of a dash, e.g., `12-15/2025`, which fails parsing for `MM-DD-YYYY`/`DD-MM-YYYY`.
-    - File: `src/bot/handlers/messageParser.js` in `_parseSpecificDate`.
-    - Action: Preserve the original separator when appending the current year (use `-` for `MM-DD`, `/` for `MM/DD`). Add unit coverage where possible or manual tests.
-  - Note: Ambiguity between `MM/DD` and `DD/MM` is handled by trying both formats. Consider documenting an explicit preferred format to avoid confusion.
 
 - Paycycle log details (full listing for the cycle)
   - Findings: `/paycycle` exists and returns totals via `Commands.handlePayCycle`, but does not list individual entries.

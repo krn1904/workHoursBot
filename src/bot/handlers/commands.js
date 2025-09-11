@@ -462,6 +462,55 @@ class Commands {
   }
 
   /**
+   * Handles /paycyclelog (and /paycycle detail) - lists entries for current cycle
+   *
+   * - Lists all entries in the current pay cycle, newest first
+   * - Shows date, time, hours, and optional tag
+   * - Caps to 50 entries and notes if truncated
+   *
+   * @returns {Promise<string>} Formatted detailed pay cycle log
+   */
+  async handlePayCycleLog() {
+    try {
+      const { cycleStart, cycleEnd } = getCurrentPayCycle();
+      let entries = await this.db.getEntriesBetween(cycleStart, cycleEnd);
+      if (!entries || entries.length === 0) {
+        return `🗓️ *Pay Cycle Entries* (${cycleStart} to ${cycleEnd})\n\nNo entries found in this cycle.`;
+      }
+
+      // Newest first by timestamp
+      entries.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+      const totalCount = entries.length;
+      const cap = 50;
+      const truncated = totalCount > cap;
+      if (truncated) {
+        entries = entries.slice(0, cap);
+      }
+
+      let response = `🗓️ *Pay Cycle Entries* (${cycleStart} to ${cycleEnd})\n` +
+                     `📄 Showing ${entries.length}${truncated ? ` of ${totalCount}` : ''} entr${entries.length === 1 ? 'y' : 'ies'} (newest first)\n\n`;
+
+      entries.forEach((e, i) => {
+        const date = moment(e.date).format('YYYY-MM-DD');
+        const time = e.timestamp ? moment(e.timestamp).format('HH:mm') : '--:--';
+        const hours = this.parser.formatHours(e.hours);
+        const tag = e.tag ? ` 🏷️ [${e.tag}]` : '';
+        response += `${i + 1}. ${date} ${time} — ${hours}h${tag}\n`;
+      });
+
+      if (truncated) {
+        response += `\nℹ️ List truncated to ${cap} most recent entries.`;
+      }
+
+      return response;
+    } catch (error) {
+      console.error('Error in handlePayCycleLog:', error);
+      return '❌ Error generating pay cycle log. Please try again.';
+    }
+  }
+
+  /**
    * Returns comprehensive help message with usage instructions and available commands
    * 
    * Provides:
@@ -493,6 +542,8 @@ class Commands {
            `• /log - Last 5 work entries with timestamps\n` +
            `• /category <tag> - Hours for specific category/project\n` +
            `• /paycycle - Hours for current pay cycle (bi-weekly)\n` +
+           `• /paycyclelog - List entries for current pay cycle (newest first)\n` +
+           `• /paycycle detail - Detailed list for the current pay cycle\n` +
            `• /delete [n] - Preview last n entries (default 5, max 10)\n` +
            `• /delete confirm 1,3,4 - Delete specific items by preview index (1-10)\n` +
            `• /help - Show this help message\n\n` +
