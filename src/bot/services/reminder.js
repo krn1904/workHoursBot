@@ -9,12 +9,15 @@
  * - Random reminder time between 15:00 and 23:00 (3PM - 11PM)
  * - Variety of reminder messages to keep engagement fresh
  * - Automatic timezone handling
- * - Smart scheduling that avoids weekends (optional)
+ * - Smart scheduling across all days
  * - Graceful error handling
  * 
  * @author Work Hours Bot
  * @version 1.0.0
  */
+
+const DEFAULT_TIMEZONE = 'Australia/Melbourne';
+process.env.TZ = DEFAULT_TIMEZONE;
 
 const moment = require('moment');
 
@@ -66,7 +69,9 @@ class DailyReminder {
     this.database = database;
     this.reminderTimeout = null;
     this.isScheduled = false;
-    
+
+    this.timezone = DEFAULT_TIMEZONE;
+
     // Configuration options
     this.config = {
       // Reminder time window (24-hour format)
@@ -74,14 +79,13 @@ class DailyReminder {
       endHour: 23,    // 11 PM
       
       // Days to send reminders (0 = Sunday, 6 = Saturday)
-      activeDays: [1, 2, 3, 4, 5], // Monday to Friday
-      // To include weekends, use: [0, 1, 2, 3, 4, 5, 6]
+      activeDays: [0, 1, 2, 3, 4, 5, 6], // All days (0=Sunday ... 6=Saturday)
       
       // Whether to skip reminder if hours already logged today
       skipIfAlreadyLogged: true,
       
-      // Timezone (defaults to system timezone)
-      timezone: null // You can set this to a specific timezone like 'America/New_York'
+      // Timezone reference used for scheduling/logging
+      timezone: this.timezone
     };
   }
 
@@ -230,10 +234,11 @@ class DailyReminder {
   async sendReminder() {
     try {
       console.log('📨 Sending daily work hours reminder...');
+      const now = moment();
       
       // Check if user already logged hours today (if database is available)
       if (this.config.skipIfAlreadyLogged && this.database) {
-        const today = moment().format('YYYY-MM-DD');
+        const today = now.format('YYYY-MM-DD');
         try {
           const todayEntries = await this.database.getTodayEntries(today);
           if (todayEntries && todayEntries.length > 0) {
@@ -250,7 +255,7 @@ class DailyReminder {
       const randomMessage = this.getRandomReminderMessage();
       
       // Add helpful context based on time of day
-      const contextMessage = this.getContextualMessage();
+      const contextMessage = this.getContextualMessage(now);
       const fullMessage = `${randomMessage}\n\n${contextMessage}`;
       
       // Send the reminder
@@ -284,8 +289,8 @@ class DailyReminder {
    * 
    * @returns {string} Contextual message
    */
-  getContextualMessage() {
-    const hour = moment().hour();
+  getContextualMessage(now = moment()) {
+    const hour = now.hour();
     
     if (hour >= 15 && hour < 17) {
       return "💡 *Afternoon check-in* - Perfect time to log morning work!";
@@ -401,12 +406,12 @@ async function sendScheduledReminder(bot, authorizedUserId, database = null, for
   console.log(`⏰ Current time: ${now.format('YYYY-MM-DD HH:mm:ss')} (Hour: ${hour}, Day: ${dayOfWeek})`);
   
   // Check if it's within reminder hours and on an active day
-  if (hour >= 15 && hour <= 23 && [1, 2, 3, 4, 5].includes(dayOfWeek)) {
+  if (hour >= 15 && hour <= 23 && reminder.config.activeDays.includes(dayOfWeek)) {
     console.log('✅ Within reminder time window, sending reminder');
     await reminder.sendReminder();
   } else {
     console.log('⏭️ Outside reminder time window or inactive day, skipping');
-    console.log(`   Expected: Hour 15-23 (currently ${hour}), Days Mon-Fri (currently ${dayOfWeek})`);
+    console.log(`   Expected: Hour 15-23 (currently ${hour}), Days allowed: ${reminder.config.activeDays.join(', ')} (currently ${dayOfWeek})`);
   }
 }
 

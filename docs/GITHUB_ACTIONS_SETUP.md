@@ -5,7 +5,7 @@ This guide helps you set up automatic daily reminders using GitHub Actions, whic
 ## 🎯 How It Works
 
 1. **GitHub Actions runs on schedule** (4 times daily between 3PM-11PM Australian time)
-2. **Random selection** ensures only 1 reminder per day on average
+2. **Daily slot selection** picks exactly one of the four windows per day (feels random, guaranteed delivery)
 3. **Calls your bot's API** to trigger the reminder
 4. **Sends Telegram message** using your existing reminder system
 
@@ -27,6 +27,7 @@ In your GitHub repository, go to **Settings** → **Secrets and variables** → 
 | `BOT_WEBHOOK_URL` | `https://your-app.vercel.app` | Your bot's deployment URL |
 | `AUTHORIZED_USER_ID` | `123456789` | Your Telegram user ID |
 | `REMINDER_SECRET` | `your-random-secret-key` | Random string for security |
+| `REMINDER_RANDOM_SEED` (optional) | `any string` | Overrides daily slot rotation seed |
 
 ### 2. Add Environment Variable to Your Deployment
 
@@ -36,7 +37,7 @@ Add this environment variable to your hosting platform (Vercel/Railway/etc.):
 REMINDER_SECRET=your-random-secret-key
 ```
 
-**Important**: Use the same secret value in both GitHub and your deployment.
+**Important**: Use the same `REMINDER_SECRET` value in both GitHub and your deployment.
 
 ### 3. Enable GitHub Actions
 
@@ -66,13 +67,15 @@ curl -X POST "https://your-app.vercel.app/api/reminder" \
 
 ## ⏰ Schedule Details
 
-The workflow runs **4 times daily** on weekdays in Australian timezone:
+The workflow runs **4 times daily** on every day of the week in Australian timezone:
 - **3:00 PM AEST** (afternoon check-in)
 - **5:30 PM AEST** (end of workday) 
 - **7:45 PM AEST** (evening wrap-up)
 - **9:15 PM AEST** (final reminder)
 
-Each run has a **25% chance** of sending a reminder, ensuring you get approximately **1 reminder per day** at a random time.
+> ℹ️ By default the bot treats all reminder scheduling as `Australia/Melbourne`. Update `DEFAULT_TIMEZONE` in `src/bot/services/reminder.js` if you deploy in another region.
+
+Exactly one run per day will send a reminder (selected via a deterministic hash of the day and your seed), so delivery time rotates while still feeling random.
 
 ## 🔒 Security Features
 
@@ -88,10 +91,10 @@ The schedule uses **Australian Eastern Standard Time (AEST)** by default.
 ### **Current Configuration (AEST - Sydney/Melbourne):**
 | Australian Time | UTC Time | GitHub Actions Cron |
 |----------------|----------|-------------------|
-| 3:00 PM AEST | 5:00 AM UTC | `0 5 * * 1-5` |
-| 5:30 PM AEST | 7:30 AM UTC | `30 7 * * 1-5` |
-| 7:45 PM AEST | 9:45 AM UTC | `45 9 * * 1-5` |
-| 9:15 PM AEST | 11:15 AM UTC | `15 11 * * 1-5` |
+| 3:00 PM AEST | 5:00 AM UTC | `0 5 * * 0-6` |
+| 5:30 PM AEST | 7:30 AM UTC | `30 7 * * 0-6` |
+| 7:45 PM AEST | 9:45 AM UTC | `45 9 * * 0-6` |
+| 9:15 PM AEST | 11:15 AM UTC | `15 11 * * 0-6` |
 
 ### **Other Australian Timezones:**
 
@@ -142,43 +145,40 @@ To adjust for your timezone, modify the cron schedules in `.github/workflows/dai
 ## 🎛️ Customization
 
 ### Change Australian Timezone
-Edit the cron schedules in `.github/workflows/daily-reminder.yml` based on your location:
+Edit the cron schedules in `.github/workflows/daily-reminder.yml` (and update `DEFAULT_TIMEZONE` in `src/bot/services/reminder.js` if you want a different base timezone) based on your location:
 
 **For Adelaide (ACST):**
 ```yaml
 # Replace the existing schedule section with:
 schedule:
-  - cron: '30 5 * * 1-5'   # 3:00 PM ACST
-  - cron: '0 8 * * 1-5'    # 5:30 PM ACST
-  - cron: '15 10 * * 1-5'  # 7:45 PM ACST
-  - cron: '45 11 * * 1-5'  # 9:15 PM ACST
+  - cron: '30 5 * * 0-6'   # 3:00 PM ACST
+  - cron: '0 8 * * 0-6'    # 5:30 PM ACST
+  - cron: '15 10 * * 0-6'  # 7:45 PM ACST
+  - cron: '45 11 * * 0-6'  # 9:15 PM ACST
 ```
 
 **For Perth (AWST):**
 ```yaml
 # Replace the existing schedule section with:
 schedule:
-  - cron: '0 7 * * 1-5'    # 3:00 PM AWST
-  - cron: '30 9 * * 1-5'   # 5:30 PM AWST
-  - cron: '45 11 * * 1-5'  # 7:45 PM AWST
-  - cron: '15 13 * * 1-5'  # 9:15 PM AWST
+  - cron: '0 7 * * 0-6'    # 3:00 PM AWST
+  - cron: '30 9 * * 0-6'   # 5:30 PM AWST
+  - cron: '45 11 * * 0-6'  # 7:45 PM AWST
+  - cron: '15 13 * * 0-6'  # 9:15 PM AWST
 ```
 
 ### Change Reminder Frequency
 Edit the cron schedules in `.github/workflows/daily-reminder.yml`:
 ```yaml
 # More frequent (every 2 hours)
-- cron: '0 5,7,9,11,13 * * 1-5'
+- cron: '0 5,7,9,11,13 * * 0-6'
 
 # Less frequent (once daily)
-- cron: '0 7 * * 1-5'  # 5:30 PM AEST only
+- cron: '0 7 * * 0-6'  # 5:30 PM AEST only
 ```
 
-### Include Weekends
-Change `1-5` to `0-6` in cron schedules:
-```yaml
-- cron: '0 5 * * 0-6'  # Include Sunday (0) and Saturday (6)
-```
+### Weekday-Only Reminders
+If you want to exclude weekends, change `0-6` to `1-5` in your cron expressions and set `activeDays` to weekdays only in `src/bot/services/reminder.js`.
 
 ## ✅ Success Indicators
 
