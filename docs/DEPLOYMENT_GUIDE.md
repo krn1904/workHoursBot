@@ -130,6 +130,8 @@ Your webhook endpoint will be: `https://your-project.vercel.app/api/bot`
 #### 6. Set Up Daily Reminders
 Follow the [GitHub Actions Setup Guide](GITHUB_ACTIONS_SETUP.md) to configure automated daily reminders with Australian timezone support.
 
+> ℹ️ Reminders run on the `Australia/Melbourne` timezone by default. If you need a different base timezone, update `DEFAULT_TIMEZONE` in `src/bot/services/reminder.js` and align your GitHub Actions cron schedule accordingly.
+
 ### Railway
 
 Railway provides simple deployment with persistent storage:

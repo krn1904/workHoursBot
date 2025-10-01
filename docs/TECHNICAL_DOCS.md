@@ -181,10 +181,11 @@ class Commands {
 
 **Features**:
 - Configurable reminder times (3PM-11PM)
-- Smart scheduling (weekdays only)
+- Smart scheduling across all days of the week
 - Skip if already logged
 - Multiple reminder messages
 - Serverless-aware implementation
+- Default timezone set to `Australia/Melbourne` for consistent cron alignment
 
 **API**:
 ```javascript

@@ -17,13 +17,13 @@ on:
   # Australian time: 3:00 PM - 11:00 PM becomes UTC: 5:00 AM - 1:00 PM
   schedule:
     # 5:00 AM UTC = 3:00 PM AEST
-    - cron: '0 5 * * 1-5'
+    - cron: '0 5 * * 0-6'
     # 7:30 AM UTC = 5:30 PM AEST
-    - cron: '30 7 * * 1-5'
+    - cron: '30 7 * * 0-6'
     # 9:45 AM UTC = 7:45 PM AEST
-    - cron: '45 9 * * 1-5'
+    - cron: '45 9 * * 0-6'
     # 11:15 AM UTC = 9:15 PM AEST
-    - cron: '15 11 * * 1-5'
+    - cron: '15 11 * * 0-6'
   
   # Trigger on push to feature branches for testing
   push:
@@ -74,16 +74,38 @@ jobs:
         run: |
           # Determine if we should send the reminder
           if [ "${{ env.PRODUCTION_MODE }}" = "true" ]; then
-            # Production mode: Use random selection (25% chance)
-            RANDOM_NUM=$((RANDOM % 4))
-            echo "🎲 Production random selection: $RANDOM_NUM (need 0 to send)"
-            
-            if [ $RANDOM_NUM -eq 0 ]; then
-              echo "🎯 Sending production reminder..."
+            RAW_SEED="${{ secrets.REMINDER_RANDOM_SEED }}"
+            if [ -z "$RAW_SEED" ]; then
+              RAW_SEED="${{ secrets.AUTHORIZED_USER_ID }}"
+            fi
+
+            # Convert seed into numeric value
+            SEED_INT=$(printf '%s' "$RAW_SEED" | cksum | awk '{print $1}')
+            DAY_OF_YEAR=$(date -u '+%j')
+            TARGET_SLOT=$(( (SEED_INT + DAY_OF_YEAR) % 4 ))
+
+            case "${{ github.event.schedule }}" in
+              '0 5 * * 0-6') CURRENT_SLOT=0 ;;
+              '30 7 * * 0-6') CURRENT_SLOT=1 ;;
+              '45 9 * * 0-6') CURRENT_SLOT=2 ;;
+              '15 11 * * 0-6') CURRENT_SLOT=3 ;;
+              *)
+                echo "⚠️ Unknown schedule expression: '${{ github.event.schedule }}'"
+                CURRENT_SLOT=0
+                ;;
+            esac
+
+            echo "📆 Day of year: $DAY_OF_YEAR"
+            echo "🔢 Seed value: $SEED_INT"
+            echo "🎯 Target slot today: $TARGET_SLOT"
+            echo "🕒 Current slot index: $CURRENT_SLOT"
+
+            if [ "$CURRENT_SLOT" -eq "$TARGET_SLOT" ]; then
+              echo "✅ Slot matches — sending production reminder"
               SEND_REMINDER=true
               SOURCE="github_actions_production"
             else
-              echo "⏭️ Skipping reminder this time (random selection)"
+              echo "⏭️ Not today's slot, skipping send"
               SEND_REMINDER=false
             fi
           else
@@ -117,7 +139,7 @@ jobs:
               exit 1
             fi
           else
-            echo "✅ Completed without sending (random skip)"
+            echo "✅ Completed without sending (not the selected slot)"
           fi
 
       - name: Summary
@@ -131,8 +153,7 @@ jobs:
           echo "🎯 Branch: ${{ github.ref_name }}"
           
           if [ "${{ env.PRODUCTION_MODE }}" = "true" ]; then
-            echo "📅 Next production check in 2-3 hours"
-            echo "🎲 Each check has ~25% chance of sending reminder"
+            echo "📅 Next production window in 2-3 hours (one slot chosen per day)"
           else
             echo "🧪 This was a test run on feature branch"
           fi

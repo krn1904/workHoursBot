@@ -744,7 +744,7 @@ class Commands {
         case 'status':
           return `🔔 *Daily Reminder Status*\n\n` +
                  `⏰ *Schedule:* Random time between 3:00 PM - 11:00 PM\n` +
-                 `📅 *Active Days:* Monday - Friday\n` +
+                 `📅 *Active Days:* Every day (Monday - Sunday)\n` +
                  `🎯 *Purpose:* Reminds you to log your daily work hours\n` +
                  `🤖 *Smart Skip:* Won't remind if you've already logged hours today\n\n` +
                  `💡 *Note:* Reminders work best in always-on deployments.\n` +
@@ -759,7 +759,7 @@ class Commands {
           return `🧪 *Test Reminder*\n\n` +
                  `⏰ Time to log your work hours! How many hours did you work today?\n\n` +
                  `💡 *This is what your daily reminders look like!*\n` +
-                 `Actual reminders will be sent randomly between 3:00 PM - 11:00 PM on weekdays.\n\n` +
+                 `Actual reminders will be sent randomly between 3:00 PM - 11:00 PM each day.\n\n` +
                  `📝 Just reply with something like: "Worked 8 hours today"`;
         
         case 'info':
@@ -767,7 +767,7 @@ class Commands {
                  `🎯 **Purpose:** Encourage consistent work hour logging\n\n` +
                  `⏰ **Timing:**\n` +
                  `   • Random time between 3:00 PM - 11:00 PM\n` +
-                 `   • Only on weekdays (Monday - Friday)\n` +
+                 `   • Every day of the week (Monday - Sunday)\n` +
                  `   • Different time each day to stay engaging\n\n` +
                  `🧠 **Smart Features:**\n` +
                  `   • Skips reminder if you've already logged hours\n` +
