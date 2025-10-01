@@ -137,6 +137,9 @@ PAY_RATE=45.0
 # PAY_RATE_CURRENCY=AUD
 # PAY_RATE_LOCALE=en-AU
 # PAY_RATE_SYMBOL=$
+# PAY_RATE_HOLIDAY=80.0
+# PAY_RATE_HOLIDAY_TAGS=holiday,public_holiday,public holiday
+# PAY_RATE_HOLIDAY_MESSAGE=Public Holiday
 ```
 
 #### 4. Redeploy
@@ -480,4 +483,3 @@ Congratulations! Your Telegram Work Hours Logger Bot is now deployed and ready f
 - 💬 Community support forums
 
 Happy time tracking! 🎯
-

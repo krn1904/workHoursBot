@@ -450,6 +450,8 @@ parser.extractHours("Had a great day");          // null
 
 #### handleSummary()
 
+> Holiday hours are detected when an entry's tag matches any value in `PAY_RATE_HOLIDAY_TAGS` (default: `holiday`, `public_holiday`, `public holiday`). Those hours use the holiday pay rate in earnings estimates.
+
 Generates weekly and monthly work summaries.
 
 **Returns**: `Promise<String>` - Formatted summary message
@@ -462,11 +464,13 @@ Generates weekly and monthly work summaries.
    🏢 Weekdays: Xh
    📆 Saturday: Xh
    ☀️ Sunday: Xh
+   🎉 Holiday: Xh               # Only when entries include holiday tags
 
 🗓️ *This Month:* X hours (Y entries)
    🏢 Weekdays: Xh
    📆 Saturday: Xh
    ☀️ Sunday: Xh
+   🎉 Holiday: Xh               # Only when entries include holiday tags
 
 💰 *Estimated Earnings*        # Only when PAY_RATE* environment variables are configured
    📅 This Week: $X.XX
@@ -491,6 +495,7 @@ Shows today's work entries and totals.
    🏢 Weekdays: Xh
    📆 Saturday: Xh
    ☀️ Sunday: Xh
+   🎉 Holiday: Xh               # Only when entries include holiday tags
 
 💰 Estimated Earnings: $X.XX   # Only when PAY_RATE* env vars are set
    🏢 Weekdays: $X.XX
@@ -546,6 +551,7 @@ Shows current pay cycle summary along with a detailed entry list.
    🏢 Weekdays: Xh
    📆 Saturday: Xh
    ☀️ Sunday: Xh
+   🎉 Holiday: Xh               # Only when entries include holiday tags
 
 💰 Estimated Earnings: $X.XX   # Only when PAY_RATE* env vars are set
    🏢 Weekdays: $X.XX
