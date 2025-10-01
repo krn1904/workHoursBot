@@ -201,7 +201,7 @@ Processes bot commands and returns formatted responses.
 | /today | None | Today's work entries |
 | /log | None | Last 5 work entries |
 | /category | tag | Hours for specific category |
-| /paycycle | None | Current pay cycle summary |
+| /paycycle | None | Current pay cycle summary with detailed entries |
 | /help | None | Help message |
 | /delete | [n] | Preview last n entries (default 5, max 10) |
 | /delete confirm | 1,3,4 | Delete specific items by preview index (1–10) |
@@ -519,9 +519,9 @@ Shows total hours for a specific category.
 
 #### handlePayCycle()
 
-Shows current pay cycle summary.
+Shows current pay cycle summary along with a detailed entry list.
 
-**Returns**: `Promise<String>` - Formatted pay cycle data
+**Returns**: `Promise<String>` - Formatted pay cycle data and entry list
 
 **Response Format**:
 ```
@@ -531,6 +531,13 @@ Shows current pay cycle summary.
    🏢 Weekdays: Xh
    📆 Saturday: Xh
    ☀️ Sunday: Xh
+
+📄 *Entries (newest first)*
+
+1. YYYY-MM-DD HH:MM — Xh 🏷️ [tag]
+2. YYYY-MM-DD HH:MM — Xh
+
+ℹ️ List truncated to 50 most recent entries. (Optional)
 ```
 
 #### getHelpMessage()

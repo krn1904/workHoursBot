@@ -426,13 +426,14 @@ class Commands {
   async handlePayCycle() {
     try {
       const { cycleStart, cycleEnd } = getCurrentPayCycle();
-      const entries = await this.db.getEntriesBetween(cycleStart, cycleEnd);
-      
+      let entries = await this.db.getEntriesBetween(cycleStart, cycleEnd);
+      entries = Array.isArray(entries) ? entries : [];
+
       // Calculate hours for pay cycle by day type
       let weekdayHours = 0;
       let saturdayHours = 0;
       let sundayHours = 0;
-      
+
       entries.forEach(entry => {
         const dayOfWeek = moment(entry.date).day();
         if (dayOfWeek === 0) {
@@ -443,39 +444,18 @@ class Commands {
           weekdayHours += entry.hours;
         }
       });
-      
+
       const total = weekdayHours + saturdayHours + sundayHours;
       const formattedTotal = this.parser.formatHours(total);
-      
-      // Format pay cycle summary
-      const response = `🗓️ *Current Pay Cycle* (${cycleStart} to ${cycleEnd})\n\n` +
+
+      let response = `🗓️ *Current Pay Cycle* (${cycleStart} to ${cycleEnd})\n\n` +
         `   ⏳ Total: ${formattedTotal} hours (${entries.length} entries)\n` +
         `   🏢 Weekdays: ${this.parser.formatHours(weekdayHours)}h\n` +
         `   📆 Saturday: ${this.parser.formatHours(saturdayHours)}h\n` +
         `   ☀️ Sunday: ${this.parser.formatHours(sundayHours)}h`;
-      
-      return response;
-    } catch (error) {
-      console.error('Error in handlePayCycle:', error);
-      return '❌ Error generating pay cycle summary. Please try again.';
-    }
-  }
 
-  /**
-   * Handles /paycyclelog (and /paycycle detail) - lists entries for current cycle
-   *
-   * - Lists all entries in the current pay cycle, newest first
-   * - Shows date, time, hours, and optional tag
-   * - Caps to 50 entries and notes if truncated
-   *
-   * @returns {Promise<string>} Formatted detailed pay cycle log
-   */
-  async handlePayCycleLog() {
-    try {
-      const { cycleStart, cycleEnd } = getCurrentPayCycle();
-      let entries = await this.db.getEntriesBetween(cycleStart, cycleEnd);
       if (!entries || entries.length === 0) {
-        return `🗓️ *Pay Cycle Entries* (${cycleStart} to ${cycleEnd})\n\nNo entries found in this cycle.`;
+        return response + '\n\n📄 No entries found in this cycle.';
       }
 
       // Newest first by timestamp
@@ -488,8 +468,8 @@ class Commands {
         entries = entries.slice(0, cap);
       }
 
-      let response = `🗓️ *Pay Cycle Entries* (${cycleStart} to ${cycleEnd})\n` +
-                     `📄 Showing ${entries.length}${truncated ? ` of ${totalCount}` : ''} entr${entries.length === 1 ? 'y' : 'ies'} (newest first)\n\n`;
+      const displayedCount = entries.length;
+      response += `\n\n📄 *Entries (newest first)* — Showing ${displayedCount}${truncated ? ` of ${totalCount}` : ''} entr${displayedCount === 1 ? 'y' : 'ies'}\n\n`;
 
       entries.forEach((e, i) => {
         const date = moment(e.date).format('YYYY-MM-DD');
@@ -504,6 +484,21 @@ class Commands {
       }
 
       return response;
+    } catch (error) {
+      console.error('Error in handlePayCycle:', error);
+      return '❌ Error generating pay cycle summary. Please try again.';
+    }
+  }
+
+  /**
+   * Legacy handler to support /paycyclelog and /paycycle detail aliases.
+   *
+   * @returns {Promise<string>} Consolidated pay cycle summary and entry list
+   */
+  async handlePayCycleLog() {
+    try {
+      // Reuse consolidated pay cycle handler so aliases return identical output
+      return await this.handlePayCycle();
     } catch (error) {
       console.error('Error in handlePayCycleLog:', error);
       return '❌ Error generating pay cycle log. Please try again.';
@@ -541,9 +536,7 @@ class Commands {
            `• /today - Today's logged hours and entries\n` +
            `• /log - Last 5 work entries with timestamps\n` +
            `• /category <tag> - Hours for specific category/project\n` +
-           `• /paycycle - Hours for current pay cycle (bi-weekly)\n` +
-           `• /paycyclelog - List entries for current pay cycle (newest first)\n` +
-           `• /paycycle detail - Detailed list for the current pay cycle\n` +
+          `• /paycycle - Current pay cycle summary with detailed entry list\n` +
            `• /delete [n] - Preview last n entries (default 5, max 10)\n` +
            `• /delete confirm 1,3,4 - Delete specific items by preview index (1-10)\n` +
            `• /help - Show this help message\n\n` +

@@ -152,7 +152,7 @@ class MessageParser {
 - `/today` - Current day summary
 - `/log` - Recent entries
 - `/category` - Tag-based filtering
-- `/paycycle` - Bi-weekly summaries
+- `/paycycle` - Bi-weekly summary with detailed entry list
 - `/help` - Usage instructions
 - `/stats` - Database statistics
 - `/validate` - Database integrity check
