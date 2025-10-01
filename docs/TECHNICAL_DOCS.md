@@ -411,9 +411,13 @@ PAY_RATE_SUNDAY=65.0                # Sunday hourly rate override
 PAY_RATE_CURRENCY=AUD               # Currency code for formatting (Intl)
 PAY_RATE_LOCALE=en-AU               # Locale used for formatting values
 PAY_RATE_SYMBOL=$                   # Fallback symbol if Intl formatter fails
+PAY_RATE_HOLIDAY=80.0               # Public-holiday hourly rate override
+PAY_RATE_HOLIDAY_TAGS=holiday,public_holiday   # Tags treated as holidays
+PAY_RATE_HOLIDAY_MESSAGE=Public Holiday        # Label used in summaries
 ```
 
 > The reminder scheduler uses the hard-coded timezone defined in `src/bot/services/reminder.js` (`DEFAULT_TIMEZONE`, defaulting to Australia/Melbourne). Update that constant and the cron schedule when deploying in other regions.
+> Holiday detection defaults to the tags `holiday`, `public_holiday`, and `public holiday`; override with `PAY_RATE_HOLIDAY_TAGS` as needed.
 
 ### Database Deployment
 

@@ -96,6 +96,10 @@ The schedule uses **Australian Eastern Standard Time (AEST)** by default.
 | 7:45 PM AEST | 9:45 AM UTC | `45 9 * * 0-6` |
 | 9:15 PM AEST | 11:15 AM UTC | `15 11 * * 0-6` |
 
+> ℹ️ By default the bot treats all reminder scheduling as `Australia/Melbourne`. Update `DEFAULT_TIMEZONE` in `src/bot/services/reminder.js` if you deploy in another region, and adjust the cron expressions above. Pay estimates in bot responses respect the `PAY_RATE*` environment variables; set them to match your actual hourly rates.
+
+> 💡 To log public holidays at premium rates, include the word `holiday` (or any tag listed in `PAY_RATE_HOLIDAY_TAGS`) in your time entry message.
+
 ### **Other Australian Timezones:**
 
 **Adelaide/Darwin (ACST - UTC+9.5):**
@@ -209,4 +213,3 @@ If GitHub Actions doesn't work for you:
 5. **AWS EventBridge** (paid service)
 
 All these can call your `/api/reminder` endpoint with the same authentication.
-

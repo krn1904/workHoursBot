@@ -91,12 +91,22 @@ const WEEKEND_RATE = parseRate(process.env.PAY_RATE_WEEKEND);
 const PAY_RATES = {
   weekday: parseRate(process.env.PAY_RATE_WEEKDAY) ?? FALLBACK_RATE ?? 0,
   saturday: parseRate(process.env.PAY_RATE_SATURDAY) ?? WEEKEND_RATE ?? FALLBACK_RATE ?? 0,
-  sunday: parseRate(process.env.PAY_RATE_SUNDAY) ?? WEEKEND_RATE ?? FALLBACK_RATE ?? 0
+  sunday: parseRate(process.env.PAY_RATE_SUNDAY) ?? WEEKEND_RATE ?? FALLBACK_RATE ?? 0,
+  holiday: parseRate(process.env.PAY_RATE_HOLIDAY) ?? FALLBACK_RATE ?? 0
 };
 
 const PAY_RATE_LOCALE = process.env.PAY_RATE_LOCALE || 'en-AU';
 const PAY_RATE_CURRENCY = process.env.PAY_RATE_CURRENCY || 'AUD';
 const PAY_RATE_SYMBOL = process.env.PAY_RATE_SYMBOL || '$';
+
+const HOLIDAY_TAGS = (process.env.PAY_RATE_HOLIDAY_TAGS || 'holiday,public_holiday,public holiday')
+  .split(',')
+  .map(tag => tag.trim().toLowerCase())
+  .filter(Boolean);
+
+const HOLIDAY_LABEL = (process.env.PAY_RATE_HOLIDAY_MESSAGE || 'Holiday').trim() || 'Holiday';
+const HOLIDAY_ICON = '🎉';
+const HOLIDAY_DISPLAY = `${HOLIDAY_ICON} ${HOLIDAY_LABEL}`;
 
 const PAY_RATES_ENABLED = Object.values(PAY_RATES).some(rate => rate > 0);
 
@@ -128,15 +138,86 @@ function formatCurrency(amount) {
   return `${PAY_RATE_SYMBOL}${numericAmount.toFixed(2)}`;
 }
 
+function isHolidayEntry(entry) {
+  if (!entry || !entry.tag) {
+    return false;
+  }
+  return HOLIDAY_TAGS.includes(String(entry.tag).trim().toLowerCase());
+}
+
+function calculateHoursByType(entries = []) {
+  const result = {
+    weekdayHours: 0,
+    saturdayHours: 0,
+    sundayHours: 0,
+    total: 0,
+    holiday: {
+      total: 0,
+      weekday: 0,
+      saturday: 0,
+      sunday: 0
+    }
+  };
+
+  if (!Array.isArray(entries)) {
+    return result;
+  }
+
+  entries.forEach(entry => {
+    const hours = Number(entry?.hours) || 0;
+    if (hours <= 0) {
+      return;
+    }
+
+    const dayOfWeek = moment(entry.date).day();
+    const holiday = isHolidayEntry(entry);
+
+    if (dayOfWeek === 0) {
+      result.sundayHours += hours;
+      if (holiday) {
+        result.holiday.sunday += hours;
+      }
+    } else if (dayOfWeek === 6) {
+      result.saturdayHours += hours;
+      if (holiday) {
+        result.holiday.saturday += hours;
+      }
+    } else {
+      result.weekdayHours += hours;
+      if (holiday) {
+        result.holiday.weekday += hours;
+      }
+    }
+
+    if (holiday) {
+      result.holiday.total += hours;
+    }
+
+    result.total += hours;
+  });
+
+  return result;
+}
+
 function calculatePayTotals({
   weekdayHours = 0,
   saturdayHours = 0,
-  sundayHours = 0
+  sundayHours = 0,
+  holidayHours = {}
 } = {}) {
+  const holidayWeekday = Math.min(holidayHours.weekday || 0, weekdayHours);
+  const holidaySaturday = Math.min(holidayHours.saturday || 0, saturdayHours);
+  const holidaySunday = Math.min(holidayHours.sunday || 0, sundayHours);
+
+  const effectiveWeekday = Math.max(weekdayHours - holidayWeekday, 0);
+  const effectiveSaturday = Math.max(saturdayHours - holidaySaturday, 0);
+  const effectiveSunday = Math.max(sundayHours - holidaySunday, 0);
+
   return {
-    weekday: weekdayHours * PAY_RATES.weekday,
-    saturday: saturdayHours * PAY_RATES.saturday,
-    sunday: sundayHours * PAY_RATES.sunday
+    weekday: effectiveWeekday * PAY_RATES.weekday,
+    saturday: effectiveSaturday * PAY_RATES.saturday,
+    sunday: effectiveSunday * PAY_RATES.sunday,
+    holiday: (holidayHours.total || 0) * PAY_RATES.holiday
   };
 }
 
@@ -294,38 +375,8 @@ class Commands {
         this.db.getEntriesBetween(startOfMonth, endOfMonth)
       ]);
 
-      /**
-       * Helper function to calculate hours breakdown by day type
-       * 
-       * @param {Array} entries - Array of work entries
-       * @returns {Object} Hours breakdown with totals
-       */
-      function calculateHours(entries) {
-        let weekdayHours = 0;
-        let saturdayHours = 0;
-        let sundayHours = 0;
-        
-        entries.forEach(entry => {
-          const dayOfWeek = moment(entry.date).day(); // 0 = Sunday, 6 = Saturday
-          if (dayOfWeek === 0) {
-            sundayHours += entry.hours;
-          } else if (dayOfWeek === 6) {
-            saturdayHours += entry.hours;
-          } else {
-            weekdayHours += entry.hours; // Monday through Friday
-          }
-        });
-        
-        return {
-          weekdayHours,
-          saturdayHours,
-          sundayHours,
-          total: weekdayHours + saturdayHours + sundayHours
-        };
-      }
-
-      const week = calculateHours(weekEntries);
-      const month = calculateHours(monthEntries);
+      const week = calculateHoursByType(weekEntries);
+      const month = calculateHoursByType(monthEntries);
 
       // Format hours for display using parser utility
       const weekHours = this.parser.formatHours(week.total);
@@ -342,21 +393,51 @@ class Commands {
         `   📆 Saturday: ${this.parser.formatHours(month.saturdayHours)}h\n` +
         `   ☀️ Sunday: ${this.parser.formatHours(month.sundayHours)}h`;
 
-      if (PAY_RATES_ENABLED) {
-        const weekPay = calculatePayTotals(week);
-        const monthPay = calculatePayTotals(month);
-        const weekPayTotal = weekPay.weekday + weekPay.saturday + weekPay.sunday;
-        const monthPayTotal = monthPay.weekday + monthPay.saturday + monthPay.sunday;
+      if (week.holiday.total > 0) {
+        response += `\n   ${HOLIDAY_DISPLAY}: ${this.parser.formatHours(week.holiday.total)}h`;
+      }
 
-        response += `\n\n💰 *Estimated Earnings*\n` +
-          `   📅 This Week: ${formatCurrency(weekPayTotal)}\n` +
-          `      • Weekdays: ${formatCurrency(weekPay.weekday)}\n` +
-          `      • Saturday: ${formatCurrency(weekPay.saturday)}\n` +
-          `      • Sunday: ${formatCurrency(weekPay.sunday)}\n` +
-          `   🗓️ This Month: ${formatCurrency(monthPayTotal)}\n` +
-          `      • Weekdays: ${formatCurrency(monthPay.weekday)}\n` +
-          `      • Saturday: ${formatCurrency(monthPay.saturday)}\n` +
-          `      • Sunday: ${formatCurrency(monthPay.sunday)}`;
+      if (month.holiday.total > 0) {
+        response += `\n   ${HOLIDAY_DISPLAY}: ${this.parser.formatHours(month.holiday.total)}h`;
+      }
+
+      if (PAY_RATES_ENABLED) {
+        const weekPay = calculatePayTotals({
+          weekdayHours: week.weekdayHours,
+          saturdayHours: week.saturdayHours,
+          sundayHours: week.sundayHours,
+          holidayHours: week.holiday
+        });
+        const monthPay = calculatePayTotals({
+          weekdayHours: month.weekdayHours,
+          saturdayHours: month.saturdayHours,
+          sundayHours: month.sundayHours,
+          holidayHours: month.holiday
+        });
+        const weekPayTotal = weekPay.weekday + weekPay.saturday + weekPay.sunday + weekPay.holiday;
+        const monthPayTotal = monthPay.weekday + monthPay.saturday + monthPay.sunday + monthPay.holiday;
+
+        const weekLines = [
+          `   📅 This Week: ${formatCurrency(weekPayTotal)}`,
+          `      • Weekdays: ${formatCurrency(weekPay.weekday)}`,
+          `      • Saturday: ${formatCurrency(weekPay.saturday)}`,
+          `      • Sunday: ${formatCurrency(weekPay.sunday)}`
+        ];
+        if (PAY_RATES.holiday > 0 || week.holiday.total > 0 || weekPay.holiday > 0) {
+          weekLines.push(`      • ${HOLIDAY_DISPLAY}: ${formatCurrency(weekPay.holiday)}`);
+        }
+
+        const monthLines = [
+          `   🗓️ This Month: ${formatCurrency(monthPayTotal)}`,
+          `      • Weekdays: ${formatCurrency(monthPay.weekday)}`,
+          `      • Saturday: ${formatCurrency(monthPay.saturday)}`,
+          `      • Sunday: ${formatCurrency(monthPay.sunday)}`
+        ];
+        if (PAY_RATES.holiday > 0 || month.holiday.total > 0 || monthPay.holiday > 0) {
+          monthLines.push(`      • ${HOLIDAY_DISPLAY}: ${formatCurrency(monthPay.holiday)}`);
+        }
+
+        response += `\n\n💰 *Estimated Earnings*\n` + weekLines.join('\n') + '\n' + monthLines.join('\n');
       }
 
       return response;
@@ -386,53 +467,53 @@ class Commands {
         return '📅 No work logged for today yet.';
       }
 
-      // Calculate hours for today by day type
-      let weekdayHours = 0;
-      let saturdayHours = 0;
-      let sundayHours = 0;
-      
-      entries.forEach(entry => {
-        const dayOfWeek = moment(entry.date).day();
-        if (dayOfWeek === 0) {
-          sundayHours += entry.hours;
-        } else if (dayOfWeek === 6) {
-          saturdayHours += entry.hours;
-        } else {
-          weekdayHours += entry.hours;
-        }
-      });
-      
-      const total = weekdayHours + saturdayHours + sundayHours;
+      const totals = calculateHoursByType(entries);
+      const { weekdayHours, saturdayHours, sundayHours, holiday } = totals;
+
+      const total = totals.total;
       const formattedTotal = this.parser.formatHours(total);
 
       // Build response with individual entries
       let response = `📅 *Today's Work Log* (${formattedTotal} hours total)\n` +
         `   🏢 Weekdays: ${this.parser.formatHours(weekdayHours)}h\n` +
         `   📆 Saturday: ${this.parser.formatHours(saturdayHours)}h\n` +
-        `   ☀️ Sunday: ${this.parser.formatHours(sundayHours)}h\n`;
+        `   ☀️ Sunday: ${this.parser.formatHours(sundayHours)}h`;
+
+      if (holiday.total > 0) {
+        response += `\n   ${HOLIDAY_DISPLAY}: ${this.parser.formatHours(holiday.total)}h`;
+      }
+
+      response += `\n\n`;
 
       if (PAY_RATES_ENABLED) {
         const todayPay = calculatePayTotals({
           weekdayHours,
           saturdayHours,
-          sundayHours
+          sundayHours,
+          holidayHours: holiday
         });
-        const todayPayTotal = todayPay.weekday + todayPay.saturday + todayPay.sunday;
+        const todayPayTotal = todayPay.weekday + todayPay.saturday + todayPay.sunday + todayPay.holiday;
 
-        response += `\n💰 Estimated Earnings: ${formatCurrency(todayPayTotal)}\n` +
-          `   🏢 Weekdays: ${formatCurrency(todayPay.weekday)}\n` +
-          `   📆 Saturday: ${formatCurrency(todayPay.saturday)}\n` +
-          `   ☀️ Sunday: ${formatCurrency(todayPay.sunday)}\n`;
+        const payLines = [
+          `💰 Estimated Earnings: ${formatCurrency(todayPayTotal)}`,
+          `   🏢 Weekdays: ${formatCurrency(todayPay.weekday)}`,
+          `   📆 Saturday: ${formatCurrency(todayPay.saturday)}`,
+          `   ☀️ Sunday: ${formatCurrency(todayPay.sunday)}`
+        ];
+        if (PAY_RATES.holiday > 0 || holiday.total > 0 || todayPay.holiday > 0) {
+          payLines.push(`   ${HOLIDAY_DISPLAY}: ${formatCurrency(todayPay.holiday)}`);
+        }
+
+        response += payLines.join('\n') + '\n';
       }
-
-      response += `\n`;
       
       // Add individual entry details
       entries.forEach((entry, index) => {
         const hours = this.parser.formatHours(entry.hours);
         const tag = entry.tag ? ` 🏷️ [${entry.tag}]` : '';
         const time = moment(entry.timestamp).format('HH:mm');
-        response += `${index + 1}. ${hours}h${tag} (🕒 ${time})\n`;
+        const holidaySuffix = isHolidayEntry(entry) ? ` ${HOLIDAY_DISPLAY}` : '';
+        response += `${index + 1}. ${hours}h${tag}${holidaySuffix} (🕒 ${time})\n`;
       });
 
       return response;
@@ -471,7 +552,8 @@ class Commands {
         const tag = entry.tag ? ` 🏷️ [${entry.tag}]` : '';
         const date = moment(entry.date).format('MMM DD'); // e.g., "Jan 15"
         const time = moment(entry.timestamp).format('HH:mm'); // e.g., "14:30"
-        response += `${index + 1}. ${hours}h${tag} on 📅 ${date} (🕒 ${time})\n`;
+        const holidaySuffix = isHolidayEntry(entry) ? ` ${HOLIDAY_DISPLAY}` : '';
+        response += `${index + 1}. ${hours}h${tag}${holidaySuffix} on 📅 ${date} (🕒 ${time})\n`;
       });
 
       return response;
@@ -537,23 +619,10 @@ class Commands {
       let entries = await this.db.getEntriesBetween(cycleStart, cycleEnd);
       entries = Array.isArray(entries) ? entries : [];
 
-      // Calculate hours for pay cycle by day type
-      let weekdayHours = 0;
-      let saturdayHours = 0;
-      let sundayHours = 0;
+      const totals = calculateHoursByType(entries);
+      const { weekdayHours, saturdayHours, sundayHours, holiday } = totals;
 
-      entries.forEach(entry => {
-        const dayOfWeek = moment(entry.date).day();
-        if (dayOfWeek === 0) {
-          sundayHours += entry.hours;
-        } else if (dayOfWeek === 6) {
-          saturdayHours += entry.hours;
-        } else {
-          weekdayHours += entry.hours;
-        }
-      });
-
-      const total = weekdayHours + saturdayHours + sundayHours;
+      const total = totals.total;
       const formattedTotal = this.parser.formatHours(total);
 
       let response = `🗓️ *Current Pay Cycle* (${cycleStart} to ${cycleEnd})\n\n` +
@@ -562,18 +631,30 @@ class Commands {
         `   📆 Saturday: ${this.parser.formatHours(saturdayHours)}h\n` +
         `   ☀️ Sunday: ${this.parser.formatHours(sundayHours)}h`;
 
+      if (holiday.total > 0) {
+        response += `\n   ${HOLIDAY_DISPLAY}: ${this.parser.formatHours(holiday.total)}h`;
+      }
+
       if (PAY_RATES_ENABLED) {
         const cyclePay = calculatePayTotals({
           weekdayHours,
           saturdayHours,
-          sundayHours
+          sundayHours,
+          holidayHours: holiday
         });
-        const cyclePayTotal = cyclePay.weekday + cyclePay.saturday + cyclePay.sunday;
+        const cyclePayTotal = cyclePay.weekday + cyclePay.saturday + cyclePay.sunday + cyclePay.holiday;
 
-        response += `\n\n💰 Estimated Earnings: ${formatCurrency(cyclePayTotal)}\n` +
-          `   🏢 Weekdays: ${formatCurrency(cyclePay.weekday)}\n` +
-          `   📆 Saturday: ${formatCurrency(cyclePay.saturday)}\n` +
-          `   ☀️ Sunday: ${formatCurrency(cyclePay.sunday)}`;
+        const payLines = [
+          `\n\n💰 Estimated Earnings: ${formatCurrency(cyclePayTotal)}`,
+          `   🏢 Weekdays: ${formatCurrency(cyclePay.weekday)}`,
+          `   📆 Saturday: ${formatCurrency(cyclePay.saturday)}`,
+          `   ☀️ Sunday: ${formatCurrency(cyclePay.sunday)}`
+        ];
+        if (PAY_RATES.holiday > 0 || holiday.total > 0 || cyclePay.holiday > 0) {
+          payLines.push(`   ${HOLIDAY_DISPLAY}: ${formatCurrency(cyclePay.holiday)}`);
+        }
+
+        response += payLines.join('\n');
       }
 
       if (!entries || entries.length === 0) {
@@ -598,7 +679,8 @@ class Commands {
         const time = e.timestamp ? moment(e.timestamp).format('HH:mm') : '--:--';
         const hours = this.parser.formatHours(e.hours);
         const tag = e.tag ? ` 🏷️ [${e.tag}]` : '';
-        response += `${i + 1}. ${date} ${time} — ${hours}h${tag}\n`;
+        const holidaySuffix = isHolidayEntry(e) ? ` ${HOLIDAY_DISPLAY}` : '';
+        response += `${i + 1}. ${date} ${time} — ${hours}h${tag}${holidaySuffix}\n`;
       });
 
       if (truncated) {
@@ -641,6 +723,26 @@ class Commands {
   getHelpMessage() {
     const { cycleStart, cycleEnd } = this.getCurrentPayCycle();
     
+    let payRateSection = '';
+    if (PAY_RATES_ENABLED) {
+      const rateLines = [];
+      if (PAY_RATES.weekday > 0) {
+        rateLines.push(`   🏢 Weekdays: ${formatCurrency(PAY_RATES.weekday)} per hour`);
+      }
+      if (PAY_RATES.saturday > 0) {
+        rateLines.push(`   📆 Saturday: ${formatCurrency(PAY_RATES.saturday)} per hour`);
+      }
+      if (PAY_RATES.sunday > 0) {
+        rateLines.push(`   ☀️ Sunday: ${formatCurrency(PAY_RATES.sunday)} per hour`);
+      }
+      if (PAY_RATES.holiday > 0) {
+        rateLines.push(`   ${HOLIDAY_DISPLAY}: ${formatCurrency(PAY_RATES.holiday)} per hour`);
+      }
+      if (rateLines.length > 0) {
+        payRateSection = `\n\n💰 *Configured Pay Rates:*\n` + rateLines.join('\n');
+      }
+    }
+
     return `🤖 *Work Hours Bot Help*\n\n` +
            `👋 *Welcome!* Your work hours tracking bot is ready.\n\n` +
            `📅 *Current Pay Cycle:* ${cycleStart} to ${cycleEnd}\n\n` +
@@ -670,7 +772,8 @@ class Commands {
            `• Tags are automatically extracted (e.g., "coding", "client work")\n` +
            `• Supports various time formats (6h, 5.5 hours, 3 hrs)\n` +
            `• Recognizes "today", "yesterday", and specific dates\n` +
-           `• All data is stored securely in your database`;
+           `• All data is stored securely in your database` +
+           payRateSection;
   }
 
   /**

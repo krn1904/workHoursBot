@@ -17,6 +17,7 @@ A Node.js Telegram bot that allows you to log your daily work hours through natu
 - 🔔 **Daily Reminders**: Automated GitHub Actions reminders (Australian timezone support)
 - 💰 **Configurable Pay Estimates**: Hourly pay via environment variables (weekday/weekend support)
 - 🇦🇺 **Australian Timezone**: Optimized for AEST/ACST/AWST work hours
+- 🎉 **Holiday Overrides**: Tag entries as holidays to apply custom public-holiday rates and messaging
 
 ## Commands
 
@@ -45,6 +46,9 @@ A Node.js Telegram bot that allows you to log your daily work hours through natu
 - "Yesterday I did 3 hours on project X"
 - "8 hours coding today"
 - "2.5 hours meeting with client"
+- "Worked 8 hours on holiday"
+
+> 💡 Include the word `holiday` (or any tag from `PAY_RATE_HOLIDAY_TAGS`, default: `holiday`, `public_holiday`, `public holiday`) in your log message to treat those hours as public-holiday work. Holiday hours appear separately in summaries and use the configured holiday pay rate.
 
 ## Setup Instructions
 
@@ -84,6 +88,9 @@ PAY_RATE=45.0
 # PAY_RATE_CURRENCY=AUD
 # PAY_RATE_LOCALE=en-AU
 # PAY_RATE_SYMBOL=$
+# PAY_RATE_HOLIDAY=80.0
+# PAY_RATE_HOLIDAY_TAGS=holiday,public_holiday,public holiday
+# PAY_RATE_HOLIDAY_MESSAGE=Public Holiday
 ```
 
 > ℹ️ Customize the reminder timezone via `DEFAULT_TIMEZONE` in `src/bot/services/reminder.js`, and adjust pay calculations by setting the `PAY_RATE*` environment variables above.
