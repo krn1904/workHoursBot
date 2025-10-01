@@ -128,6 +128,15 @@ PAY_RATE=45.0
 # PAY_RATE_CURRENCY=AUD
 # PAY_RATE_LOCALE=en-AU
 # PAY_RATE_SYMBOL=$
+PAY_RATE=45.0
+# Optional overrides:
+# PAY_RATE_WEEKDAY=45.0
+# PAY_RATE_WEEKEND=60.0
+# PAY_RATE_SATURDAY=55.0
+# PAY_RATE_SUNDAY=65.0
+# PAY_RATE_CURRENCY=AUD
+# PAY_RATE_LOCALE=en-AU
+# PAY_RATE_SYMBOL=$
 ```
 
 #### 4. Redeploy
@@ -471,3 +480,4 @@ Congratulations! Your Telegram Work Hours Logger Bot is now deployed and ready f
 - 💬 Community support forums
 
 Happy time tracking! 🎯
+
