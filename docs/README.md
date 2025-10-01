@@ -15,6 +15,7 @@ A Node.js Telegram bot that allows you to log your daily work hours through natu
 - 📈 **Pay Cycle Tracking**: Monitor your work patterns with 14-day bi-weekly cycles
 - 🏃 **Quick Commands**: Fast access to summaries and recent entries
 - 🔔 **Daily Reminders**: Automated GitHub Actions reminders (Australian timezone support)
+- 💰 **Configurable Pay Estimates**: Hourly pay via environment variables (weekday/weekend support)
 - 🇦🇺 **Australian Timezone**: Optimized for AEST/ACST/AWST work hours
 
 ## Commands
@@ -74,7 +75,18 @@ TELEGRAM_BOT_TOKEN=your_bot_token_here
 AUTHORIZED_USER_ID=your_telegram_user_id_here
 MONGODB_URI=your_mongodb_connection_string
 DATABASE_NAME=workhoursbot
+PAY_RATE=45.0
+# Optional overrides:
+# PAY_RATE_WEEKDAY=45.0
+# PAY_RATE_WEEKEND=60.0
+# PAY_RATE_SATURDAY=55.0
+# PAY_RATE_SUNDAY=65.0
+# PAY_RATE_CURRENCY=AUD
+# PAY_RATE_LOCALE=en-AU
+# PAY_RATE_SYMBOL=$
 ```
+
+> ℹ️ Customize the reminder timezone via `DEFAULT_TIMEZONE` in `src/bot/services/reminder.js`, and adjust pay calculations by setting the `PAY_RATE*` environment variables above.
 
 ### 5. Local Development
 

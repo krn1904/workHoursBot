@@ -119,6 +119,15 @@ TELEGRAM_BOT_TOKEN=your_bot_token
 AUTHORIZED_USER_ID=your_telegram_user_id
 MONGODB_URI=your_mongodb_connection_string
 REMINDER_SECRET=your_random_secret_key
+PAY_RATE=45.0
+# Optional overrides:
+# PAY_RATE_WEEKDAY=45.0
+# PAY_RATE_WEEKEND=60.0
+# PAY_RATE_SATURDAY=55.0
+# PAY_RATE_SUNDAY=65.0
+# PAY_RATE_CURRENCY=AUD
+# PAY_RATE_LOCALE=en-AU
+# PAY_RATE_SYMBOL=$
 ```
 
 #### 4. Redeploy

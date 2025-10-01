@@ -100,18 +100,18 @@ The schedule uses **Australian Eastern Standard Time (AEST)** by default.
 
 **Adelaide/Darwin (ACST - UTC+9.5):**
 ```yaml
-- cron: '30 5 * * 1-5'   # 3:00 PM ACST
-- cron: '0 8 * * 1-5'    # 5:30 PM ACST  
-- cron: '15 10 * * 1-5'  # 7:45 PM ACST
-- cron: '45 11 * * 1-5'  # 9:15 PM ACST
+- cron: '30 5 * * 0-6'   # 3:00 PM ACST
+- cron: '0 8 * * 0-6'    # 5:30 PM ACST  
+- cron: '15 10 * * 0-6'  # 7:45 PM ACST
+- cron: '45 11 * * 0-6'  # 9:15 PM ACST
 ```
 
 **Perth (AWST - UTC+8):**
 ```yaml
-- cron: '0 7 * * 1-5'    # 3:00 PM AWST
-- cron: '30 9 * * 1-5'   # 5:30 PM AWST
-- cron: '45 11 * * 1-5'  # 7:45 PM AWST
-- cron: '15 13 * * 1-5'  # 9:15 PM AWST
+- cron: '0 7 * * 0-6'    # 3:00 PM AWST
+- cron: '30 9 * * 0-6'   # 5:30 PM AWST
+- cron: '45 11 * * 0-6'  # 7:45 PM AWST
+- cron: '15 13 * * 0-6'  # 9:15 PM AWST
 ```
 
 To adjust for your timezone, modify the cron schedules in `.github/workflows/daily-reminder.yml`.
