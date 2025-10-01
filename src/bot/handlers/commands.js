@@ -670,7 +670,13 @@ class Commands {
            `• Tags are automatically extracted (e.g., "coding", "client work")\n` +
            `• Supports various time formats (6h, 5.5 hours, 3 hrs)\n` +
            `• Recognizes "today", "yesterday", and specific dates\n` +
-           `• All data is stored securely in your database`;
+           `• All data is stored securely in your database` +
+           (PAY_RATES_ENABLED
+              ? `\n\n💰 *Configured Pay Rates:*\n` +
+                `   🏢 Weekdays: ${formatCurrency(PAY_RATES.weekday)} per hour\n` +
+                `   📆 Saturday: ${formatCurrency(PAY_RATES.saturday)} per hour\n` +
+                `   ☀️ Sunday: ${formatCurrency(PAY_RATES.sunday)} per hour`
+              : '');
   }
 
   /**
