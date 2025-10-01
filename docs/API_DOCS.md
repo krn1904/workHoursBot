@@ -467,6 +467,16 @@ Generates weekly and monthly work summaries.
    🏢 Weekdays: Xh
    📆 Saturday: Xh
    ☀️ Sunday: Xh
+
+💰 *Estimated Earnings*        # Only when PAY_RATE* environment variables are configured
+   📅 This Week: $X.XX
+      • Weekdays: $X.XX
+      • Saturday: $X.XX
+      • Sunday: $X.XX
+   🗓️ This Month: $X.XX
+      • Weekdays: $X.XX
+      • Saturday: $X.XX
+      • Sunday: $X.XX
 ```
 
 #### handleToday()
@@ -481,6 +491,11 @@ Shows today's work entries and totals.
    🏢 Weekdays: Xh
    📆 Saturday: Xh
    ☀️ Sunday: Xh
+
+💰 Estimated Earnings: $X.XX   # Only when PAY_RATE* env vars are set
+   🏢 Weekdays: $X.XX
+   📆 Saturday: $X.XX
+   ☀️ Sunday: $X.XX
 
 1. Xh 🏷️ [tag] (🕒 HH:MM)
 2. Xh (🕒 HH:MM)
@@ -531,6 +546,11 @@ Shows current pay cycle summary along with a detailed entry list.
    🏢 Weekdays: Xh
    📆 Saturday: Xh
    ☀️ Sunday: Xh
+
+💰 Estimated Earnings: $X.XX   # Only when PAY_RATE* env vars are set
+   🏢 Weekdays: $X.XX
+   📆 Saturday: $X.XX
+   ☀️ Sunday: $X.XX
 
 📄 *Entries (newest first)*
 

@@ -66,13 +66,13 @@ curl -X POST "https://your-app.vercel.app/api/reminder" \
 
 ## ⏰ Schedule Details
 
-The workflow runs **4 times daily** on weekdays in Australian timezone:
+The workflow runs **4 times daily** (every day) in the Australian timezone:
 - **3:00 PM AEST** (afternoon check-in)
 - **5:30 PM AEST** (end of workday) 
 - **7:45 PM AEST** (evening wrap-up)
 - **9:15 PM AEST** (final reminder)
 
-Each run has a **25% chance** of sending a reminder, ensuring you get approximately **1 reminder per day** at a random time.
+Exactly one of the four runs will send a reminder each day (selected deterministically using the day number plus your optional seed). The delivery window still feels random, but you are guaranteed a notification every day.
 
 ## 🔒 Security Features
 
@@ -88,27 +88,29 @@ The schedule uses **Australian Eastern Standard Time (AEST)** by default.
 ### **Current Configuration (AEST - Sydney/Melbourne):**
 | Australian Time | UTC Time | GitHub Actions Cron |
 |----------------|----------|-------------------|
-| 3:00 PM AEST | 5:00 AM UTC | `0 5 * * 1-5` |
-| 5:30 PM AEST | 7:30 AM UTC | `30 7 * * 1-5` |
-| 7:45 PM AEST | 9:45 AM UTC | `45 9 * * 1-5` |
-| 9:15 PM AEST | 11:15 AM UTC | `15 11 * * 1-5` |
+| 3:00 PM AEST | 5:00 AM UTC | `0 5 * * 0-6` |
+| 5:30 PM AEST | 7:30 AM UTC | `30 7 * * 0-6` |
+| 7:45 PM AEST | 9:45 AM UTC | `45 9 * * 0-6` |
+| 9:15 PM AEST | 11:15 AM UTC | `15 11 * * 0-6` |
+
+> ℹ️ By default the bot treats all reminder scheduling as `Australia/Melbourne`. Update `DEFAULT_TIMEZONE` in `src/bot/services/reminder.js` if you deploy in another region, and adjust the cron expressions above. Pay estimates in bot responses respect the `PAY_RATE*` environment variables; set them to match your actual hourly rates.
 
 ### **Other Australian Timezones:**
 
 **Adelaide/Darwin (ACST - UTC+9.5):**
 ```yaml
-- cron: '30 5 * * 1-5'   # 3:00 PM ACST
-- cron: '0 8 * * 1-5'    # 5:30 PM ACST  
-- cron: '15 10 * * 1-5'  # 7:45 PM ACST
-- cron: '45 11 * * 1-5'  # 9:15 PM ACST
+- cron: '30 5 * * 0-6'   # 3:00 PM ACST
+- cron: '0 8 * * 0-6'    # 5:30 PM ACST  
+- cron: '15 10 * * 0-6'  # 7:45 PM ACST
+- cron: '45 11 * * 0-6'  # 9:15 PM ACST
 ```
 
 **Perth (AWST - UTC+8):**
 ```yaml
-- cron: '0 7 * * 1-5'    # 3:00 PM AWST
-- cron: '30 9 * * 1-5'   # 5:30 PM AWST
-- cron: '45 11 * * 1-5'  # 7:45 PM AWST
-- cron: '15 13 * * 1-5'  # 9:15 PM AWST
+- cron: '0 7 * * 0-6'    # 3:00 PM AWST
+- cron: '30 9 * * 0-6'   # 5:30 PM AWST
+- cron: '45 11 * * 0-6'  # 7:45 PM AWST
+- cron: '15 13 * * 0-6'  # 9:15 PM AWST
 ```
 
 To adjust for your timezone, modify the cron schedules in `.github/workflows/daily-reminder.yml`.
@@ -168,17 +170,14 @@ schedule:
 Edit the cron schedules in `.github/workflows/daily-reminder.yml`:
 ```yaml
 # More frequent (every 2 hours)
-- cron: '0 5,7,9,11,13 * * 1-5'
+- cron: '0 5,7,9,11,13 * * 0-6'
 
 # Less frequent (once daily)
-- cron: '0 7 * * 1-5'  # 5:30 PM AEST only
+- cron: '0 7 * * 0-6'  # 5:30 PM AEST only
 ```
 
-### Include Weekends
-Change `1-5` to `0-6` in cron schedules:
-```yaml
-- cron: '0 5 * * 0-6'  # Include Sunday (0) and Saturday (6)
-```
+### Weekday-Only Reminders
+If you want to exclude weekends, change `0-6` to `1-5` in your cron schedules and set `activeDays` to weekdays only in `src/bot/services/reminder.js`.
 
 ## ✅ Success Indicators
 

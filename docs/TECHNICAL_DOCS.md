@@ -402,7 +402,17 @@ MONGODB_URI=<connection_string>     # Database connection
 ```bash
 NODE_ENV=production                 # Environment mode
 LOG_LEVEL=info                      # Logging verbosity
+PAY_RATE=45.0                       # Base hourly rate (fallback for all days)
+PAY_RATE_WEEKDAY=45.0               # Weekday hourly rate override
+PAY_RATE_WEEKEND=60.0               # Weekend fallback rate
+PAY_RATE_SATURDAY=55.0              # Saturday hourly rate override
+PAY_RATE_SUNDAY=65.0                # Sunday hourly rate override
+PAY_RATE_CURRENCY=AUD               # Currency code for formatting (Intl)
+PAY_RATE_LOCALE=en-AU               # Locale used for formatting values
+PAY_RATE_SYMBOL=$                   # Fallback symbol if Intl formatter fails
 ```
+
+> The reminder scheduler uses the hard-coded timezone defined in `src/bot/services/reminder.js` (`DEFAULT_TIMEZONE`, defaulting to Australia/Melbourne). Update that constant and the cron schedule when deploying in other regions.
 
 ### Database Deployment
 

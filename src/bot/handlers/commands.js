@@ -68,6 +68,79 @@ function getCurrentPayCycle(today = moment()) {
 }
 
 /**
+ * Parse numeric environment variables safely
+ *
+ * @param {string|undefined|null} value - Raw value from environment
+ * @returns {number|null} Parsed non-negative number or null if invalid
+ */
+function parseRate(value) {
+  if (value === undefined || value === null || value === '') {
+    return null;
+  }
+
+  const rate = Number(value);
+  if (!Number.isFinite(rate) || rate < 0) {
+    return null;
+  }
+
+  return rate;
+}
+
+const FALLBACK_RATE = parseRate(process.env.PAY_RATE);
+const WEEKEND_RATE = parseRate(process.env.PAY_RATE_WEEKEND);
+const PAY_RATES = {
+  weekday: parseRate(process.env.PAY_RATE_WEEKDAY) ?? FALLBACK_RATE ?? 0,
+  saturday: parseRate(process.env.PAY_RATE_SATURDAY) ?? WEEKEND_RATE ?? FALLBACK_RATE ?? 0,
+  sunday: parseRate(process.env.PAY_RATE_SUNDAY) ?? WEEKEND_RATE ?? FALLBACK_RATE ?? 0
+};
+
+const PAY_RATE_LOCALE = process.env.PAY_RATE_LOCALE || 'en-AU';
+const PAY_RATE_CURRENCY = process.env.PAY_RATE_CURRENCY || 'AUD';
+const PAY_RATE_SYMBOL = process.env.PAY_RATE_SYMBOL || '$';
+
+const PAY_RATES_ENABLED = Object.values(PAY_RATES).some(rate => rate > 0);
+
+let currencyFormatter = null;
+if (PAY_RATES_ENABLED) {
+  try {
+    currencyFormatter = new Intl.NumberFormat(PAY_RATE_LOCALE, {
+      style: 'currency',
+      currency: PAY_RATE_CURRENCY
+    });
+  } catch (error) {
+    currencyFormatter = null;
+  }
+}
+
+function formatCurrency(amount) {
+  const numericAmount = Number(amount) || 0;
+  if (!PAY_RATES_ENABLED) {
+    return numericAmount.toFixed(2);
+  }
+
+  if (currencyFormatter) {
+    try {
+      return currencyFormatter.format(numericAmount);
+    } catch (error) {
+      // fall through to symbol-based format
+    }
+  }
+  return `${PAY_RATE_SYMBOL}${numericAmount.toFixed(2)}`;
+}
+
+function calculatePayTotals({
+  weekdayHours = 0,
+  saturdayHours = 0,
+  sundayHours = 0
+} = {}) {
+  return {
+    weekday: weekdayHours * PAY_RATES.weekday,
+    saturday: saturdayHours * PAY_RATES.saturday,
+    sunday: sundayHours * PAY_RATES.sunday
+  };
+}
+
+/**
  * Class for handling bot commands like /summary, /today, /log, etc.
  * 
  * This class processes user commands and generates appropriate responses
@@ -259,15 +332,34 @@ class Commands {
       const monthHours = this.parser.formatHours(month.total);
 
       // Build formatted response message with emojis for better UX
-      return `📊 *Work Summary*\n\n` +
-             `📅 *This Week:* ${weekHours} hours (${weekEntries.length} entries)\n` +
-             `   🏢 Weekdays: ${this.parser.formatHours(week.weekdayHours)}h\n` +
-             `   📆 Saturday: ${this.parser.formatHours(week.saturdayHours)}h\n` +
-             `   ☀️ Sunday: ${this.parser.formatHours(week.sundayHours)}h\n\n` +
-             `🗓️ *This Month:* ${monthHours} hours (${monthEntries.length} entries)\n` +
-             `   🏢 Weekdays: ${this.parser.formatHours(month.weekdayHours)}h\n` +
-             `   📆 Saturday: ${this.parser.formatHours(month.saturdayHours)}h\n` +
-             `   ☀️ Sunday: ${this.parser.formatHours(month.sundayHours)}h`;
+      let response = `📊 *Work Summary*\n\n` +
+        `📅 *This Week:* ${weekHours} hours (${weekEntries.length} entries)\n` +
+        `   🏢 Weekdays: ${this.parser.formatHours(week.weekdayHours)}h\n` +
+        `   📆 Saturday: ${this.parser.formatHours(week.saturdayHours)}h\n` +
+        `   ☀️ Sunday: ${this.parser.formatHours(week.sundayHours)}h\n\n` +
+        `🗓️ *This Month:* ${monthHours} hours (${monthEntries.length} entries)\n` +
+        `   🏢 Weekdays: ${this.parser.formatHours(month.weekdayHours)}h\n` +
+        `   📆 Saturday: ${this.parser.formatHours(month.saturdayHours)}h\n` +
+        `   ☀️ Sunday: ${this.parser.formatHours(month.sundayHours)}h`;
+
+      if (PAY_RATES_ENABLED) {
+        const weekPay = calculatePayTotals(week);
+        const monthPay = calculatePayTotals(month);
+        const weekPayTotal = weekPay.weekday + weekPay.saturday + weekPay.sunday;
+        const monthPayTotal = monthPay.weekday + monthPay.saturday + monthPay.sunday;
+
+        response += `\n\n💰 *Estimated Earnings*\n` +
+          `   📅 This Week: ${formatCurrency(weekPayTotal)}\n` +
+          `      • Weekdays: ${formatCurrency(weekPay.weekday)}\n` +
+          `      • Saturday: ${formatCurrency(weekPay.saturday)}\n` +
+          `      • Sunday: ${formatCurrency(weekPay.sunday)}\n` +
+          `   🗓️ This Month: ${formatCurrency(monthPayTotal)}\n` +
+          `      • Weekdays: ${formatCurrency(monthPay.weekday)}\n` +
+          `      • Saturday: ${formatCurrency(monthPay.saturday)}\n` +
+          `      • Sunday: ${formatCurrency(monthPay.sunday)}`;
+      }
+
+      return response;
     } catch (error) {
       console.error('Error in handleSummary:', error);
       return '❌ Error generating summary. Please try again.';
@@ -317,7 +409,23 @@ class Commands {
       let response = `📅 *Today's Work Log* (${formattedTotal} hours total)\n` +
         `   🏢 Weekdays: ${this.parser.formatHours(weekdayHours)}h\n` +
         `   📆 Saturday: ${this.parser.formatHours(saturdayHours)}h\n` +
-        `   ☀️ Sunday: ${this.parser.formatHours(sundayHours)}h\n\n`;
+        `   ☀️ Sunday: ${this.parser.formatHours(sundayHours)}h\n`;
+
+      if (PAY_RATES_ENABLED) {
+        const todayPay = calculatePayTotals({
+          weekdayHours,
+          saturdayHours,
+          sundayHours
+        });
+        const todayPayTotal = todayPay.weekday + todayPay.saturday + todayPay.sunday;
+
+        response += `\n💰 Estimated Earnings: ${formatCurrency(todayPayTotal)}\n` +
+          `   🏢 Weekdays: ${formatCurrency(todayPay.weekday)}\n` +
+          `   📆 Saturday: ${formatCurrency(todayPay.saturday)}\n` +
+          `   ☀️ Sunday: ${formatCurrency(todayPay.sunday)}\n`;
+      }
+
+      response += `\n`;
       
       // Add individual entry details
       entries.forEach((entry, index) => {
@@ -453,6 +561,20 @@ class Commands {
         `   🏢 Weekdays: ${this.parser.formatHours(weekdayHours)}h\n` +
         `   📆 Saturday: ${this.parser.formatHours(saturdayHours)}h\n` +
         `   ☀️ Sunday: ${this.parser.formatHours(sundayHours)}h`;
+
+      if (PAY_RATES_ENABLED) {
+        const cyclePay = calculatePayTotals({
+          weekdayHours,
+          saturdayHours,
+          sundayHours
+        });
+        const cyclePayTotal = cyclePay.weekday + cyclePay.saturday + cyclePay.sunday;
+
+        response += `\n\n💰 Estimated Earnings: ${formatCurrency(cyclePayTotal)}\n` +
+          `   🏢 Weekdays: ${formatCurrency(cyclePay.weekday)}\n` +
+          `   📆 Saturday: ${formatCurrency(cyclePay.saturday)}\n` +
+          `   ☀️ Sunday: ${formatCurrency(cyclePay.sunday)}`;
+      }
 
       if (!entries || entries.length === 0) {
         return response + '\n\n📄 No entries found in this cycle.';
