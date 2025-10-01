@@ -236,27 +236,7 @@ async function handleCommand(text, chatId) {
           const db = new Database();
           await db.connectToMongoDB();
           const commands = new Commands(db, parser);
-          response = await commands.handlePayCycleLog();
-        }
-        break;
-      case '/paycycle':
-        // alias check for detail: '/paycycle detail'
-        if (arg && arg.trim().toLowerCase() === 'detail') {
-          const Database = require('../src/bot/services/database');
-          const db = new Database();
-          await db.connectToMongoDB();
-          const commands = new Commands(db, parser);
-          response = await commands.handlePayCycleLog();
-          break;
-        }
-        // fall back handled above
-      case '/paycyclelog':
-        {
-          const Database = require('../src/bot/services/database');
-          const db = new Database();
-          await db.connectToMongoDB();
-          const commands = new Commands(db, parser);
-          response = await commands.handlePayCycleLog();
+          response = await commands.handlePayCycle();
         }
         break;
       case '/delete':

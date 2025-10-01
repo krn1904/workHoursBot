@@ -6,7 +6,7 @@ This file tracks requested features, verifications, and concrete action items.
 
 - Delete Entries: Implement safe deletion of recent entries (limit 5–10).
 - Date-Based Logging: Verify and fix any issues parsing non-today dates.
-- Paycycle Details: Add command to list detailed logs for the current paycycle.
+- Paycycle Details: Completed — Consolidate summary and detailed logs into `/paycycle`.
 - Off-Today Logging Logic: Verify and fix logic when adding work for dates other than today.
 
 ## Details, Findings, and Action Items
@@ -20,10 +20,8 @@ This file tracks requested features, verifications, and concrete action items.
 
 
 - Paycycle log details (full listing for the cycle)
-  - Findings: `/paycycle` exists and returns totals via `Commands.handlePayCycle`, but does not list individual entries.
-  - Action:
-    - Add `/paycyclelog` (alias `/paycycle detail`) to list all entries within the current paycycle, newest first, showing `date`, `time`, `hours`, and optional `tag`.
-    - Reuse `db.getEntriesBetween(cycleStart, cycleEnd)`. Cap output to 50 entries; include a summary header and a note if truncated. Consider pagination if needed later.
+  - Status: Completed — `/paycycle` now returns the pay cycle summary and a detailed entry list in one response (newest first, capped at 50 with truncation note).
+  - Compatibility: `/paycycle detail` and `/paycyclelog` continue to work as aliases but return the same consolidated output.
 
 - Verify logic for adding work other than today
   - Findings:
@@ -41,7 +39,7 @@ This file tracks requested features, verifications, and concrete action items.
 
 - Bot Commands
   - Add `/delete [n]` with confirmation flow and cap to 10.
-  - Add `/paycyclelog` (or `/paycycle detail`) with detailed listing.
+- Consolidate `/paycycle` to include detailed listing alongside the summary. Completed.
   - Update `/help` text accordingly.
 
 - Parser Fixes
@@ -55,7 +53,7 @@ This file tracks requested features, verifications, and concrete action items.
 
 - Deletion: `/delete` shows a preview, requires `/delete confirm`, and only deletes up to 10 recent entries. Returns count and a brief list of deleted entries.
 - Date Logging: Messages like "Worked 5h on 12-15" and "Worked 3.5h on 15-12" log to the correct current-year dates. ISO and slash-formats continue to work.
-- Paycycle Details: `/paycyclelog` lists entries in the current cycle, includes a total summary, limits output sensibly, and formats hours consistently.
+- Paycycle Details: `/paycycle` lists cycle totals and detailed entries, limits output sensibly, notes truncation, and formats hours consistently.
 - Commands: `/summary`, `/log`, `/paycycle`, `/category`, `/today` all function correctly in serverless due to fixed imports.
 
 ## Daily Reminder Delivery (Not Receiving Telegram Messages)
