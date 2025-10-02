@@ -522,12 +522,12 @@ Returns the last 5 work entries.
 
 #### handleCategory(tag)
 
-Shows total hours for a specific category.
+Shows total hours for a specific category. When no tag is provided, it returns the available tag list.
 
 **Parameters**:
-- `tag` (String): Category to search for
+- `tag` (String, optional): Category to search for
 
-**Returns**: `Promise<String>` - Formatted category summary
+**Returns**: `Promise<String>` - Formatted category summary or tag list
 
 **Response Format**:
 ```
@@ -535,6 +535,16 @@ Shows total hours for a specific category.
 
 ⏱️ Total Hours: X
 📝 Total Entries: Y
+```
+
+When `tag` is omitted:
+```
+🏷️ *Available Tags*
+
+• tag-one
+• tag-two
+
+Use `/category <tag>` to view totals for a specific category.
 ```
 
 #### handlePayCycle()

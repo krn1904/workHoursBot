@@ -574,14 +574,39 @@ class Commands {
    */
   async handleCategory(tag) {
     // Validate that a tag was provided
-    if (!tag || typeof tag !== 'string') {
-      return '❌ Please specify a category/tag. Usage: /category <tag>';
+    if (!tag || typeof tag !== 'string' || tag.trim().length === 0) {
+      if (!this.db) {
+        return '🏷️ Unable to list categories right now. Please try again shortly.';
+      }
+
+      try {
+        const stats = await this.db.getDatabaseStats();
+        const tags = (stats?.tags || [])
+          .map(t => String(t || '').trim())
+          .filter(Boolean)
+          .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+
+        if (tags.length === 0) {
+          return '🏷️ No categories available yet. Add one by including a keyword in your log, e.g. "Worked 4 hours on projectX".';
+        }
+
+        const limit = 50;
+        const displayed = tags.slice(0, limit);
+        let response = '🏷️ *Available Tags*\n\n' + displayed.map(t => `• ${t}`).join('\n');
+
+        if (tags.length > limit) {
+          response += `\n… +${tags.length - limit} more`;
+        }
+
+        response += '\n\nUse `/category <tag>` to view totals for a specific category.';
+        return response;
+      } catch (error) {
+        console.error('Error retrieving category list:', error);
+        return '❌ Unable to retrieve category list. Please try again.';
+      }
     }
 
     const trimmedTag = tag.trim();
-    if (trimmedTag.length === 0) {
-      return '❌ Please specify a category/tag. Usage: /category <tag>';
-    }
 
     try {
       // Get aggregated data for the specified tag

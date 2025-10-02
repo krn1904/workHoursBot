@@ -25,7 +25,7 @@ A Node.js Telegram bot that allows you to log your daily work hours through natu
 - `/summary` - Weekly and monthly totals with day breakdown
 - `/today` - Today's logged hours and individual entries
 - `/log` - Last 5 work entries with timestamps
-- `/category <tag>` - Hours for specific category/project
+- `/category [tag]` - Hours for specific category/project (no tag lists all tags)
 - `/paycycle` - Current pay cycle summary with detailed entry list
 - `/help` - Complete help message and usage guide
 
