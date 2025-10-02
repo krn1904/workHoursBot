@@ -1,264 +1,67 @@
 # Telegram Work Hours Logger Bot
 
-A Node.js Telegram bot that allows you to log your daily work hours through natural language messages and provides summaries and analytics. Built for serverless deployment with MongoDB integration and webhook-based message handling.
+A personal Telegram bot for tracking daily work hours with natural-language messages. It stores entries in MongoDB, exposes a lightweight command set for summaries, and supports automated reminders.
 
-## Features
-
-- 📝 **Natural Language Logging**: Log hours with messages like "Worked 6 hours today" or "5.5 hrs on freelance"
-- 🗓️ **Date Recognition**: Supports "today", "yesterday", and specific dates
-- 🏷️ **Automatic Tagging**: Detects project names and categories from your messages
-- 📊 **Analytics**: Get weekly/monthly summaries and category breakdowns
-- 🔒 **Single User Security**: Only accepts messages from your authorized user ID
-- 💾 **MongoDB Storage**: Cloud-ready database with automatic connection management
-- ⚡ **Webhook Integration**: Serverless-optimized message handling for Vercel deployment
-- 🔍 **Smart Parsing**: Understands various time formats (6h, 5.5 hours, 3 hrs)
-- 📈 **Pay Cycle Tracking**: Monitor your work patterns with 14-day bi-weekly cycles
-- 🏃 **Quick Commands**: Fast access to summaries and recent entries
-- 🔔 **Daily Reminders**: Automated GitHub Actions reminders (Australian timezone support)
-- 💰 **Configurable Pay Estimates**: Hourly pay via environment variables (weekday/weekend support)
-- 🇦🇺 **Australian Timezone**: Optimized for AEST/ACST/AWST work hours
-- 🎉 **Holiday Overrides**: Tag entries as holidays to apply custom public-holiday rates and messaging
+## Quick Start
+1. **Create a bot** with [@BotFather](https://t.me/botfather); copy the token.
+2. **Fetch your user ID** from [@userinfobot](https://t.me/userinfobot).
+3. **Provision MongoDB** (Atlas or local) and grab the connection URL.
+4. **Set environment variables** (see below) and deploy to Vercel/Railway/Render.
+5. **Set Telegram webhook** to `https://<your-domain>/api/bot`.
+6. DM the bot: `Worked 6 hours today`.
 
 ## Commands
+| Command | Summary |
+|---------|---------|
+| `/summary` | Weekly + monthly totals with weekday/weekend/holiday breakdowns and pay estimates (if configured). |
+| `/today` | Today’s entries with per-entry details and pay breakdown. |
+| `/log` | Latest 5 entries (holiday entries flagged). |
+| `/category [tag]` | Lists all tags when omitted; totals for a specific tag when provided. |
+| `/paycycle` | Current pay-cycle hours + detailed entry list (capped at 50). |
+| `/help` | Cheat sheet plus configured pay rates. |
+| `/stats`, `/validate`, `/reset confirm`, `/backup` | Admin utilities. |
+| `/delete …` | Preview/delete the last N entries with confirmation. |
 
-### Basic Commands
-- `/summary` - Weekly and monthly totals with day breakdown
-- `/today` - Today's logged hours and individual entries
-- `/log` - Last 5 work entries with timestamps
-- `/category [tag]` - Hours for specific category/project (no tag lists all tags)
-- `/paycycle` - Current pay cycle summary with detailed entry list
-- `/help` - Complete help message and usage guide
+## Environment Variables
+```
+# Required
+TELEGRAM_BOT_TOKEN=...
+AUTHORIZED_USER_ID=...
+MONGODB_URI=...
 
-### Deletion Commands
-- `/delete [n]` - Preview last n entries (default 5, max 10) with indices
-- `/delete confirm 1,3,4` - Delete specific items by preview index (1-10)
-
-### Admin Commands
-- `/stats` - Database statistics and overview
-- `/validate` - Check database integrity and health
-- `/reset confirm` - Reset database (⚠️ DESTRUCTIVE - requires confirmation)
-- `/backup` - Create backup of all data
-
-## Example Messages
-
-- "Worked 6 hours today"
-- "5.5 hrs on freelance"
-- "Yesterday I did 3 hours on project X"
-- "8 hours coding today"
-- "2.5 hours meeting with client"
-- "Worked 8 hours on holiday"
-
-> 💡 Include the word `holiday` (or any tag from `PAY_RATE_HOLIDAY_TAGS`, default: `holiday`, `public_holiday`, `public holiday`) in your log message to treat those hours as public-holiday work. Holiday hours appear separately in summaries and use the configured holiday pay rate.
-
-## Setup Instructions
-
-### 1. Create a Telegram Bot
-
-1. Message [@BotFather](https://t.me/botfather) on Telegram
-2. Send `/newbot` and follow the instructions
-3. Save the bot token you receive
-
-### 2. Get Your User ID
-
-1. Message [@userinfobot](https://t.me/userinfobot) on Telegram
-2. Note down your user ID number
-
-### 3. MongoDB Setup
-
-1. Create a free MongoDB Atlas account at [mongodb.com](https://www.mongodb.com/atlas)
-2. Create a new cluster and database
-3. Get your MongoDB connection string
-4. Add your IP address to the whitelist (or use 0.0.0.0/0 for all IPs)
-
-### 4. Environment Configuration
-
-Create a `.env` file in the project root with your values:
-
-```env
-TELEGRAM_BOT_TOKEN=your_bot_token_here
-AUTHORIZED_USER_ID=your_telegram_user_id_here
-MONGODB_URI=your_mongodb_connection_string
-DATABASE_NAME=workhoursbot
+# Optional (examples)
 PAY_RATE=45.0
-# Optional overrides:
-# PAY_RATE_WEEKDAY=45.0
-# PAY_RATE_WEEKEND=60.0
-# PAY_RATE_SATURDAY=55.0
-# PAY_RATE_SUNDAY=65.0
-# PAY_RATE_CURRENCY=AUD
-# PAY_RATE_LOCALE=en-AU
-# PAY_RATE_SYMBOL=$
-# PAY_RATE_HOLIDAY=80.0
-# PAY_RATE_HOLIDAY_TAGS=holiday,public_holiday,public holiday
-# PAY_RATE_HOLIDAY_MESSAGE=Public Holiday
+PAY_RATE_WEEKDAY=45.0
+PAY_RATE_WEEKEND=60.0
+PAY_RATE_SATURDAY=55.0
+PAY_RATE_SUNDAY=65.0
+PAY_RATE_HOLIDAY=80.0
+PAY_RATE_HOLIDAY_TAGS=holiday,public_holiday,public holiday
+PAY_RATE_HOLIDAY_MESSAGE=Public Holiday
+PAY_RATE_CURRENCY=AUD
+PAY_RATE_LOCALE=en-AU
+PAY_RATE_SYMBOL=$
 ```
+- Leave all pay vars unset to hide earnings in responses.
+- Holiday rates trigger when a log message includes any tag listed in `PAY_RATE_HOLIDAY_TAGS` (e.g. “Worked 8 hours on holiday”).
+- Reminder timezone is hard-coded in `src/bot/services/reminder.js` (`DEFAULT_TIMEZONE` = Australia/Melbourne).
 
-> ℹ️ Customize the reminder timezone via `DEFAULT_TIMEZONE` in `src/bot/services/reminder.js`, and adjust pay calculations by setting the `PAY_RATE*` environment variables above.
+## Deployment Notes
+- **Vercel flow:** push repo → set env vars → deploy → `curl https://api.telegram.org/bot<token>/setWebhook -d '{"url":"https://<domain>/api/bot"}'`.
+- **GitHub Actions reminders:** `daily-reminder.yml` hits `/api/reminder` four times per day; only one run sends the reminder using deterministic slot selection.
+- **Local dev:** `npm install && node bot.js` (polling mode). Reminders require a long-running process or manual `/api/reminder` call.
 
-### 5. Local Development
-
-1. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-2. Start the bot:
-   ```bash
-   node bot.js
-   ```
-
-3. Message your bot on Telegram to test
-
-## Deployment
-
-### Deploy to Vercel (Recommended)
-
-1. Fork/clone this repository
-2. Connect your GitHub repo to [Vercel](https://vercel.com)
-3. Add environment variables in Vercel dashboard
-4. Deploy automatically
-5. Set your bot webhook URL to: `https://your-vercel-domain.vercel.app/api/bot`
-
-### Webhook Setup
-
-Set your webhook URL in Telegram using the API (recommended; BotFather may not show a setwebhook option):
-```bash
-curl -X POST "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook" \
-     -H "Content-Type: application/json" \
-     -d '{"url": "https://your-vercel-domain.vercel.app/api/bot"}'
-```
-
-Verify the configuration:
-```bash
-curl "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getWebhookInfo"
-```
-
-If you use Vercel previews, make sure to set the webhook to your production domain (not a preview URL) when you want the bot to run against production code.
-
-## Database Schema
-
-The bot uses MongoDB with the following collection structure:
-
-```javascript
-// work_entries collection
-{
-  _id: ObjectId,
-  date: "YYYY-MM-DD",           // Date string
-  hours: 5.5,                   // Decimal hours
-  tag: "project-name",          // Optional category/project tag
-  raw_message: "5.5 hrs on freelance", // Original message
-  timestamp: ISODate,           // When entry was created
-  user_id: "123456789"          // Telegram user ID
-}
-```
-
-## Project Structure
-
-```
-├── api/                      # Serverless API endpoints
-│   ├── bot.js               # Vercel webhook handler for Telegram
-│   └── reminder.js          # Daily reminder API endpoint
-├── src/                     # Core application source code
-│   └── bot/
-│       ├── bot.js           # Main bot setup and configuration
-│       ├── handlers/        # Command and message processing
-│       │   ├── commands.js  # Bot command handlers and responses
-│       │   └── messageParser.js # Natural language parsing logic
-│       └── services/        # Business logic services
-│           ├── database.js  # MongoDB operations and connection management
-│           └── reminder.js  # Daily reminder system and scheduling
-├── config/                  # Configuration files
-├── docs/                    # Documentation files
-│   ├── README.md           # This main documentation
-│   ├── API_DOCS.md         # API endpoint documentation
-│   ├── DEPLOYMENT_GUIDE.md # Deployment instructions
-│   ├── TECHNICAL_DOCS.md   # Technical implementation details
-│   └── ...                 # Additional documentation
-├── package.json            # Dependencies and scripts
-├── vercel.json            # Vercel deployment configuration
-├── .env                   # Environment variables (create from template)
-└── work_hours.db          # SQLite database file (legacy)
-```
-
-### Architecture Overview
-
-- **`/api/`** - Serverless functions for Vercel deployment
-- **`/src/bot/`** - Core bot functionality with modular organization
-- **`/src/bot/handlers/`** - User interaction processing (commands, messages)
-- **`/src/bot/services/`** - Business logic (database, reminders)
-- **`/config/`** - Configuration and environment setup
-- **`/docs/`** - Comprehensive documentation
-
-## Key Features
-
-### Natural Language Processing
-The bot intelligently parses messages to extract:
-- **Time amounts**: "6 hours", "5.5 hrs", "3h"
-- **Dates**: "today", "yesterday", "Monday", specific dates
-- **Project tags**: Automatically detects project names and categories
-
-### Pay Cycle Tracking
-- **14-day cycles**: Automatically tracks bi-weekly periods
-- **Configurable start date**: Set in `commands.js` (PAY_CYCLE_START)
-- **Current cycle**: View with `/paycycle` command
-
-### Database Management
-- **Connection pooling**: Efficient MongoDB connections for serverless
-- **Validation tools**: Built-in database integrity checks
-- **Backup system**: Create backups before destructive operations
-- **Reset functionality**: Secure database reset with confirmation
-
-## Database Reset Feature
-
-The bot includes a secure database reset functionality:
-
-### How to Reset
-1. **Check current data**: Use `/stats` to see what will be deleted
-2. **Initiate reset**: Send `/reset` (shows warning with data preview)
-3. **Confirm reset**: Send `/reset confirm` to proceed
-
-### Safety Features
-- ⚠️ **Confirmation required**: Must type `/reset confirm` exactly
-- 💾 **Automatic backup**: Creates backup before deletion
-- 📊 **Data preview**: Shows what will be deleted
-- 🚫 **No accidental resets**: Won't work without explicit confirmation
+## Data Model & Layout
+- Mongo collection `work_entries` stores `{ date, hours, tag, raw_message, timestamp }` plus indexes on `date`, `tag`, and `timestamp`.
+- Key directories:
+  - `api/` → Vercel handlers (`bot.js`, `reminder.js`).
+  - `src/bot/handlers/` → `commands.js`, `messageParser.js`.
+  - `src/bot/services/` → `database.js`, `reminder.js`.
 
 ## Troubleshooting
+- **Bot silent?** re-run `getWebhookInfo`, confirm domain and HTTPS.
+- **No reminders?** check GitHub Actions logs and `REMINDER_SECRET` header; ensure run time falls inside 3–11 PM window in `DEFAULT_TIMEZONE`.
+- **Holiday pay missing?** confirm message tag matches `PAY_RATE_HOLIDAY_TAGS` and rates are non-zero.
+- **Category list empty?** log entries with a trailing keyword (e.g. “on clientX”); `/category` without args will enumerate them.
 
-### Bot not responding
-- Check that `TELEGRAM_BOT_TOKEN` is correct
-- Verify your `AUTHORIZED_USER_ID` matches your Telegram user ID
-- Ensure webhook URL is properly set in Telegram
-- Check server logs for error messages
-
-### Database issues
-- Verify `MONGODB_URI` connection string is correct
-- Check MongoDB Atlas network access settings
-- Ensure database user has read/write permissions
-- Use `/validate` command to check database integrity
-
-### Deployment issues
-- Make sure all environment variables are set on your hosting platform
-- Check that the webhook endpoint `/api/bot` is accessible
-- Verify MongoDB connection from your hosting environment
-- Test webhook URL responds to POST requests
-
-## Dependencies
-
-- `node-telegram-bot-api` - Telegram Bot API wrapper
-- `mongoose` - MongoDB object modeling
-- `moment` - Date and time manipulation
-- `dotenv` - Environment variable management
-
-## License
-
-MIT License - feel free to modify and use for your own projects.
-
-## Support
-
-If you encounter issues:
-1. Check the troubleshooting section above
-2. Use `/validate` to check database integrity
-3. Review server/function logs for error messages
-4. Ensure all environment variables are set correctly
-5. Test MongoDB connection independently
+Refer to the technical and API quick references for deeper details.
