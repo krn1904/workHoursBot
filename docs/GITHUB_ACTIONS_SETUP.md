@@ -1,215 +1,56 @@
-# GitHub Actions Daily Reminder Setup Guide
+# GitHub Actions Reminder Guide
 
-This guide helps you set up automatic daily reminders using GitHub Actions, which will work perfectly with your serverless deployment.
+Configure the provided workflow (`.github/workflows/daily-reminder.yml`) to trigger your Telegram reminder once per day.
 
-## 🎯 How It Works
+## 1. Prerequisites
+- Deployed bot with `/api/reminder` reachable over HTTPS.
+- `REMINDER_SECRET` configured on the hosting platform.
+- GitHub repository containing this workflow.
 
-1. **GitHub Actions runs on schedule** (4 times daily between 3PM-11PM Australian time)
-2. **Daily slot selection** picks exactly one of the four windows per day (feels random, guaranteed delivery)
-3. **Calls your bot's API** to trigger the reminder
-4. **Sends Telegram message** using your existing reminder system
+### Required GitHub secrets
+| Secret | Example | Purpose |
+|--------|---------|---------|
+| `BOT_WEBHOOK_URL` | `https://your-app.vercel.app` | Base URL for the deployed bot. |
+| `AUTHORIZED_USER_ID` | `123456789` | The same Telegram ID used by the bot. |
+| `REMINDER_SECRET` | `super-secret` | Bearer token used by `/api/reminder`. |
+| `REMINDER_RANDOM_SEED` (optional) | `my-seed` | Influences which cron slot sends the reminder each day. |
 
-## 🇦🇺 Australian Timezone Support
+Ensure the hosting platform also exposes `REMINDER_SECRET` (value must match the secret above).
 
-The system is configured for **Australian Eastern Standard Time (AEST)** by default:
-- Reminders arrive at 3:00 PM, 5:30 PM, 7:45 PM, and 9:15 PM AEST
-- GitHub Actions runs at corresponding UTC times (5:00 AM, 7:30 AM, 9:45 AM, 11:15 AM UTC)
-- Supports other Australian timezones (see customization section)
+## 2. How the Workflow Runs
+1. Four cron jobs fire daily (5:00, 7:30, 9:45, 11:15 UTC).
+2. The workflow hashes (`REMINDER_RANDOM_SEED` + day-of-year) to pick one slot; only that run calls `/api/reminder`.
+3. Test/ manual runs skip the gate and always send a reminder.
+4. The reminder engine checks the local window (3–11 PM in `DEFAULT_TIMEZONE`).
 
-## 🔧 Setup Steps
+## 3. Setup Steps
+1. **Add GitHub secrets** listed above.
+2. **Mirror `REMINDER_SECRET`** in your deployment environment.
+3. **Enable Actions** (repository → Actions → enable if disabled).
+4. **Manual test:** run the workflow via GitHub; expect a ✅ log and Telegram notification.
 
-### 1. Configure GitHub Secrets
+## 4. Cron Reference
+| Local (AEST) | UTC | Cron expression |
+|--------------|-----|----------------|
+| 3:00 PM | 5:00 AM | `0 5 * * 0-6` |
+| 5:30 PM | 7:30 AM | `30 7 * * 0-6` |
+| 7:45 PM | 9:45 AM | `45 9 * * 0-6` |
+| 9:15 PM | 11:15 AM | `15 11 * * 0-6` |
 
-In your GitHub repository, go to **Settings** → **Secrets and variables** → **Actions** and add these secrets:
+- To exclude weekends, change `0-6` to `1-5` in all expressions and limit `activeDays` in `src/bot/services/reminder.js`.
+- Adjust times for other regions by editing the cron expressions and updating `DEFAULT_TIMEZONE`.
 
-| Secret Name | Value | Description |
-|-------------|-------|-------------|
-| `BOT_WEBHOOK_URL` | `https://your-app.vercel.app` | Your bot's deployment URL |
-| `AUTHORIZED_USER_ID` | `123456789` | Your Telegram user ID |
-| `REMINDER_SECRET` | `your-random-secret-key` | Random string for security |
-| `REMINDER_RANDOM_SEED` (optional) | `any string` | Overrides daily slot rotation seed |
+## 5. Customisation Tips
+- **Frequency**: add/remove cron lines in the workflow as needed (`0 5,7,9,11 * * 0-6` for every ~2 hrs, for example).
+- **Holiday messaging**: reminders reuse the same holiday-aware pay output driven by `PAY_RATE_HOLIDAY*` variables.
 
-### 2. Add Environment Variable to Your Deployment
+## 6. Troubleshooting
+| Symptom | Suggested check |
+|---------|-----------------|
+| Logs show “Not today’s slot” | Expected; only one of four runs sends per day. |
+| 401 from `/api/reminder` | Confirm `REMINDER_SECRET` matches deployment and GitHub secret. |
+| Reminder runs but Telegram silent | Check `/api/reminder` logs for window/holiday info; ensure timezone window covers runtime. |
+| Actions not running | Verify Actions are enabled and cron expressions are committed to default branch. |
+| Wrong user receives reminder | Confirm `AUTHORIZED_USER_ID` secret and deployment env match the intended Telegram ID. |
 
-Add this environment variable to your hosting platform (Vercel/Railway/etc.):
-
-```
-REMINDER_SECRET=your-random-secret-key
-```
-
-**Important**: Use the same `REMINDER_SECRET` value in both GitHub and your deployment.
-
-### 3. Enable GitHub Actions
-
-1. Go to your repository's **Actions** tab
-2. If disabled, click **"I understand my workflows, go ahead and enable them"**
-3. The workflow will automatically start running
-
-### 4. Test the Setup
-
-#### Manual Test:
-1. Go to **Actions** tab in your GitHub repo
-2. Click **"Daily Work Hours Reminder"**
-3. Click **"Run workflow"** → **"Run workflow"**
-4. Check if you receive a test reminder
-
-#### API Test:
-```bash
-curl -X POST "https://your-app.vercel.app/api/reminder" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer your-random-secret-key" \
-  -d '{
-    "action": "send_daily",
-    "user_id": "123456789",
-    "source": "manual_test"
-  }'
-```
-
-## ⏰ Schedule Details
-
-The workflow runs **4 times daily** on every day of the week in Australian timezone:
-- **3:00 PM AEST** (afternoon check-in)
-- **5:30 PM AEST** (end of workday) 
-- **7:45 PM AEST** (evening wrap-up)
-- **9:15 PM AEST** (final reminder)
-
-> ℹ️ By default the bot treats all reminder scheduling as `Australia/Melbourne`. Update `DEFAULT_TIMEZONE` in `src/bot/services/reminder.js` if you deploy in another region.
-
-Exactly one run per day will send a reminder (selected via a deterministic hash of the day and your seed), so delivery time rotates while still feeling random.
-
-## 🔒 Security Features
-
-- **Bearer token authentication** prevents unauthorized access
-- **User ID validation** ensures only you receive reminders
-- **HTTPS-only communication** with your bot
-- **No sensitive data in logs** - tokens are hidden
-
-## 🌍 Timezone Considerations
-
-The schedule uses **Australian Eastern Standard Time (AEST)** by default.
-
-### **Current Configuration (AEST - Sydney/Melbourne):**
-| Australian Time | UTC Time | GitHub Actions Cron |
-|----------------|----------|-------------------|
-| 3:00 PM AEST | 5:00 AM UTC | `0 5 * * 0-6` |
-| 5:30 PM AEST | 7:30 AM UTC | `30 7 * * 0-6` |
-| 7:45 PM AEST | 9:45 AM UTC | `45 9 * * 0-6` |
-| 9:15 PM AEST | 11:15 AM UTC | `15 11 * * 0-6` |
-
-> ℹ️ By default the bot treats all reminder scheduling as `Australia/Melbourne`. Update `DEFAULT_TIMEZONE` in `src/bot/services/reminder.js` if you deploy in another region, and adjust the cron expressions above. Pay estimates in bot responses respect the `PAY_RATE*` environment variables; set them to match your actual hourly rates.
-
-> 💡 To log public holidays at premium rates, include the word `holiday` (or any tag listed in `PAY_RATE_HOLIDAY_TAGS`) in your time entry message.
-
-### **Other Australian Timezones:**
-
-**Adelaide/Darwin (ACST - UTC+9.5):**
-```yaml
-- cron: '30 5 * * 0-6'   # 3:00 PM ACST
-- cron: '0 8 * * 0-6'    # 5:30 PM ACST  
-- cron: '15 10 * * 0-6'  # 7:45 PM ACST
-- cron: '45 11 * * 0-6'  # 9:15 PM ACST
-- cron: '30 5 * * 0-6'   # 3:00 PM ACST
-- cron: '0 8 * * 0-6'    # 5:30 PM ACST  
-- cron: '15 10 * * 0-6'  # 7:45 PM ACST
-- cron: '45 11 * * 0-6'  # 9:15 PM ACST
-```
-
-**Perth (AWST - UTC+8):**
-```yaml
-- cron: '0 7 * * 0-6'    # 3:00 PM AWST
-- cron: '30 9 * * 0-6'   # 5:30 PM AWST
-- cron: '45 11 * * 0-6'  # 7:45 PM AWST
-- cron: '15 13 * * 0-6'  # 9:15 PM AWST
-- cron: '0 7 * * 0-6'    # 3:00 PM AWST
-- cron: '30 9 * * 0-6'   # 5:30 PM AWST
-- cron: '45 11 * * 0-6'  # 7:45 PM AWST
-- cron: '15 13 * * 0-6'  # 9:15 PM AWST
-```
-
-To adjust for your timezone, modify the cron schedules in `.github/workflows/daily-reminder.yml`.
-
-## 🐛 Troubleshooting
-
-### No Reminders Received
-1. **Check GitHub Actions logs**:
-   - Go to Actions tab → Daily Work Hours Reminder
-   - Click on latest run to see logs
-   
-2. **Verify secrets are set**:
-   - Settings → Secrets and variables → Actions
-   - Ensure all 3 secrets are present
-
-3. **Test API endpoint**:
-   ```bash
-   curl "https://your-app.vercel.app/api/reminder" \
-     -X POST \
-     -H "Authorization: Bearer your-secret"
-   ```
-
-### Authentication Errors
-- Ensure `REMINDER_SECRET` matches in both GitHub and deployment
-- Check that the secret doesn't have extra spaces or characters
-
-### Wrong User Receiving Reminders
-- Verify `AUTHORIZED_USER_ID` is your correct Telegram user ID
-- Get your ID from @userinfobot on Telegram
-
-## 🎛️ Customization
-
-### Change Australian Timezone
-Edit the cron schedules in `.github/workflows/daily-reminder.yml` (and update `DEFAULT_TIMEZONE` in `src/bot/services/reminder.js` if you want a different base timezone) based on your location:
-
-**For Adelaide (ACST):**
-```yaml
-# Replace the existing schedule section with:
-schedule:
-  - cron: '30 5 * * 0-6'   # 3:00 PM ACST
-  - cron: '0 8 * * 0-6'    # 5:30 PM ACST
-  - cron: '15 10 * * 0-6'  # 7:45 PM ACST
-  - cron: '45 11 * * 0-6'  # 9:15 PM ACST
-```
-
-**For Perth (AWST):**
-```yaml
-# Replace the existing schedule section with:
-schedule:
-  - cron: '0 7 * * 0-6'    # 3:00 PM AWST
-  - cron: '30 9 * * 0-6'   # 5:30 PM AWST
-  - cron: '45 11 * * 0-6'  # 7:45 PM AWST
-  - cron: '15 13 * * 0-6'  # 9:15 PM AWST
-```
-
-### Change Reminder Frequency
-Edit the cron schedules in `.github/workflows/daily-reminder.yml`:
-```yaml
-# More frequent (every 2 hours)
-- cron: '0 5,7,9,11,13 * * 0-6'
-- cron: '0 5,7,9,11,13 * * 0-6'
-
-# Less frequent (once daily)
-- cron: '0 7 * * 0-6'  # 5:30 PM AEST only
-- cron: '0 7 * * 0-6'  # 5:30 PM AEST only
-```
-
-### Weekday-Only Reminders
-If you want to exclude weekends, change `0-6` to `1-5` in your cron expressions and set `activeDays` to weekdays only in `src/bot/services/reminder.js`.
-
-## ✅ Success Indicators
-
-You'll know it's working when:
-- GitHub Actions runs show "✅ Reminder sent successfully"
-- You receive random Telegram reminders between 3PM-11PM Australian time
-- The bot checks if you've already logged hours (smart skip feature)
-- Reminders have variety in messages and timing
-
-## 🔄 Alternative Solutions
-
-If GitHub Actions doesn't work for you:
-
-1. **Cron-job.org** (free external cron service)
-2. **Zapier** (automation platform)
-3. **IFTTT** (simple automation)
-4. **Google Cloud Scheduler** (paid service)
-5. **AWS EventBridge** (paid service)
-
-All these can call your `/api/reminder` endpoint with the same authentication.
+With secrets and cron configured, reminders will appear once per day without further maintenance.
