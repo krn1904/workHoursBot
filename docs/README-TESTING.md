@@ -1,179 +1,41 @@
-# Testing Your Telegram Bot API Connection
+# Testing Checklist
 
-## 🎯 Quick Test Summary
+Use this guide after deployment to confirm the bot is wired correctly.
 
-Your bot structure is **✅ CORRECT** and ready for testing!
+## 1. Smoke Tests
+1. **Webhook status**
+   ```bash
+   curl "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/getWebhookInfo"
+   ```
+   Ensure `url` points to your production `/api/bot` endpoint and `last_error_date` is empty.
+2. **Manual ping** – message the bot: `Worked 6 hours today` → expect a ✅ reply.
+3. **Commands** – run `/summary`, `/today`, `/category` (no arg) to verify data + pay breakdown.
+4. **Reminder dry run** – trigger the Actions workflow manually or `curl /api/reminder` with the correct `REMINDER_SECRET`; check logs for “Within reminder time window”.
 
-## 📋 Testing Checklist
-
-### ✅ Completed
-- [x] Bot file structure verified
-- [x] API endpoints properly configured  
-- [x] Webhook handler setup correctly
-- [x] Test scripts created
-
-### 🔄 Next Steps
-- [ ] Deploy to Vercel/Production
-- [ ] Set up Telegram webhook
-- [ ] Test live message handling
-- [ ] Monitor API logs
-
-## 🚀 Step-by-Step Testing Process
-
-### 1. Deploy Your Bot
-
-First, make sure your bot is deployed to Vercel:
-
+## 2. Useful Commands
 ```bash
-# Deploy to production
-vercel --prod
+# Set webhook (one-off)
+curl -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/setWebhook" \
+  -H 'Content-Type: application/json' \
+  -d '{"url":"https://<your-domain>/api/bot"}'
 
-# Note the deployment URL (e.g., https://your-app-name.vercel.app)
-```
+# Follow Vercel logs (requires Vercel CLI)
+vercel logs <project> --follow
 
-### 2. Test Your API Endpoints
-
-Update `test-api.js` with your actual Vercel URL and run:
-
-```bash
-# Update BASE_URL in test-api.js first!
-node test-api.js
-```
-
-Expected output:
-- ✅ Environment endpoint working
-- ✅ POST test endpoint working
-- ✅ Bot webhook endpoint working
-
-### 3. Set Up Telegram Webhook
-
-Replace `<YOUR_BOT_TOKEN>` and `<YOUR_VERCEL_URL>` with your actual values:
-
-```bash
-# Set the webhook
-curl -X POST "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook" \
-  -d "url=<YOUR_VERCEL_URL>/api/bot"
-
-# Verify webhook is set
-curl "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getWebhookInfo"
-```
-
-### 4. Test Live Messages
-
-Send these test messages to your bot on Telegram:
-
-1. **Basic work log**: `"Worked 6 hours today"`
-2. **Different format**: `"5.5 hrs on freelance"`  
-3. **Command test**: `/help`
-4. **Authorization test**: Have someone else try to message the bot
-
-### 5. Monitor API Calls
-
-#### Option A: Vercel Dashboard
-1. Go to your Vercel dashboard
-2. Click on your project
-3. Go to "Functions" tab
-4. Check logs for `/api/bot` function
-5. Send a message and watch for new log entries
-
-#### Option B: Real-time Logs
-```bash
-# If you have Vercel CLI installed
-vercel logs --follow
-```
-
-#### Option C: Test Endpoint Monitoring
-```bash
-# Test if your API is receiving requests
-curl -X POST "<YOUR_VERCEL_URL>/api/test-post" \
+# Quick reminder test
+date -u; curl -X POST "$BOT_WEBHOOK_URL/api/reminder" \
+  -H "Authorization: Bearer $REMINDER_SECRET" \
   -H "Content-Type: application/json" \
-  -d '{"test": "message", "timestamp": "'$(date -Iseconds)'"}'
+  -d '{"action":"send_daily","user_id":"'$AUTHORIZED_USER_ID'","source":"manual_test"}'
 ```
 
-## 🔍 Debugging Guide
+## 3. Troubleshooting Snapshot
+| Symptom | Try this |
+|---------|----------|
+| No reply to `/help` | Confirm webhook URL and `AUTHORIZED_USER_ID`. |
+| Logging works but hours missing | Check MongoDB connection string/permissions. |
+| Reminders never send | Inspect GitHub Actions logs; verify runtime (3–11 PM in `DEFAULT_TIMEZONE`) and `REMINDER_SECRET`. |
+| Holiday pay absent | Ensure log message includes a tag from `PAY_RATE_HOLIDAY_TAGS` and rates are non-zero. |
+| Unauthorized response | `AUTHORIZED_USER_ID` mismatch—double check via @userinfobot. |
 
-### Common Issues & Solutions
-
-#### 1. "Webhook not receiving messages"
-- ✅ Check webhook URL is correct
-- ✅ Verify bot token is valid
-- ✅ Ensure HTTPS (Vercel provides this automatically)
-- ✅ Check Vercel function logs for errors
-
-#### 2. "Environment variables not found"
-- ✅ Set environment variables in Vercel dashboard
-- ✅ Redeploy after adding environment variables
-- ✅ Use exact variable names: `TELEGRAM_BOT_TOKEN`, `AUTHORIZED_USER_ID`, `MONGODB_URI`
-
-#### 3. "Bot responds but doesn't save data"
-- ✅ Check MongoDB connection string
-- ✅ Verify database permissions
-- ✅ Check Vercel function logs for database errors
-
-#### 4. "Unauthorized access" message
-- ✅ Verify `AUTHORIZED_USER_ID` matches your Telegram user ID
-- ✅ Get your user ID by messaging @userinfobot on Telegram
-
-### Log Analysis
-
-When you send a message, you should see logs like:
-```
-Creating new TelegramBot instance...
-Setting up bot handlers...
-Processing Telegram update...
-```
-
-If you see errors, they'll help identify the issue:
-- `Configuration error` = Missing environment variables
-- `Cannot connect to MongoDB` = Database connection issue
-- `processUpdate failed` = Bot logic error
-
-## 🧪 Test Commands
-
-### Quick API Health Check
-```bash
-curl "<YOUR_VERCEL_URL>/api/test"
-```
-
-### Simulate Webhook Message
-```bash
-curl -X POST "<YOUR_VERCEL_URL>/api/bot" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "message": {
-      "message_id": 1,
-      "from": {"id": YOUR_USER_ID, "first_name": "Test"},
-      "chat": {"id": YOUR_USER_ID, "type": "private"},
-      "date": '$(date +%s)',
-      "text": "Worked 6 hours today"
-    }
-  }'
-```
-
-## ✅ Success Indicators
-
-Your bot is working correctly when:
-
-1. **Webhook responds**: API returns 200 status
-2. **Bot processes message**: Logs show message processing
-3. **Database saves entry**: Work hours are logged
-4. **Bot replies**: You receive confirmation message
-5. **Commands work**: `/help`, `/summary` respond correctly
-
-## 🆘 Need Help?
-
-If you're still having issues:
-
-1. **Check Vercel logs** for specific error messages
-2. **Verify environment variables** are set correctly
-3. **Test individual components** using the test scripts
-4. **Check Telegram webhook status** with getWebhookInfo
-5. **Ensure bot token is valid** by calling getMe API
-
-## 📱 Final Test
-
-Send this message to your bot: `"Worked 8 hours today"`
-
-Expected response: `"✅ Logged 8 hours for today."`
-
-If you get this response, your API connection is working perfectly! 🎉
+Keep these basics handy; deeper debugging lives in platform logs and the Technical/API references.
