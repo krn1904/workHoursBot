@@ -1,736 +1,88 @@
-# Technical Documentation - Telegram Work Hours Logger Bot
+# Technical Overview
 
-## 📋 Table of Contents
+A quick-map for engineers working on the Telegram Work Hours Logger Bot.
 
-1. [Architecture Overview](#architecture-overview)
-2. [Core Components](#core-components)
-3. [Database Design](#database-design)
-4. [API Reference](#api-reference)
-5. [Message Processing Pipeline](#message-processing-pipeline)
-6. [Deployment Architecture](#deployment-architecture)
-7. [Security Implementation](#security-implementation)
-8. [Performance Optimizations](#performance-optimizations)
-9. [Error Handling](#error-handling)
-10. [Testing Strategy](#testing-strategy)
-11. [Monitoring and Logging](#monitoring-and-logging)
-
-## 🏗️ Architecture Overview
-
-### System Design
-
-The Telegram Work Hours Logger Bot follows a serverless-first architecture optimized for cloud deployment platforms like Vercel, Railway, and Render. The system uses webhook-based communication with Telegram for real-time message processing.
+## 1. Architecture Snapshot
+- **Entry point:** Telegram → Vercel `/api/bot` webhook → serverless handler.
+- **Core runtime:** Stateless Node.js functions; MongoDB Atlas (or compatible) for persistence.
+- **Reminder path:** GitHub Actions (or any cron) POSTs to `/api/reminder`, which triggers the same bot stack.
 
 ```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Telegram      │────│  Webhook        │────│   Application   │
-│   Platform      │    │  Handler        │    │   Logic         │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-                                │
-                                ▼
-                       ┌─────────────────┐
-                       │   MongoDB       │
-                       │   Database      │
-                       └─────────────────┘
+Telegram ──▶ api/bot (webhook)
+             │
+             ├─► messageParser → commands
+             │                └─► MongoDB (work_entries)
+             └─► api/reminder (cron-triggered)
 ```
 
-### Key Architectural Principles
-
-1. **Serverless-First**: Designed for stateless function execution
-2. **Event-Driven**: Responds to webhook events from Telegram
-3. **Single Responsibility**: Each module has a clear, focused purpose
-4. **Cloud-Native**: Optimized for modern hosting platforms
-5. **Security-First**: Authorization and validation at every layer
-
-## 🧩 Core Components
-
-### Project Structure
-
-```
-├── api/                      # Serverless API endpoints
-│   ├── bot.js               # Webhook handler for Telegram
-│   └── reminder.js          # Daily reminder API endpoint
-├── src/                     # Core application source code
-│   └── bot/
-│       ├── bot.js           # Main bot setup and configuration
-│       ├── handlers/        # Command and message processing
-│       │   ├── commands.js  # Bot command handlers and responses
-│       │   └── messageParser.js # Natural language parsing logic
-│       └── services/        # Business logic services
-│           ├── database.js  # MongoDB operations and connection management
-│           └── reminder.js  # Daily reminder system and scheduling
-├── config/                  # Configuration files
-├── docs/                    # Documentation files
-└── package.json            # Dependencies and scripts
-```
-
-### 1. Webhook Handler (`api/bot.js`)
-
-**Purpose**: Entry point for all Telegram webhook requests in serverless environment.
-
-**Key Features**:
-- Singleton bot instance management
-- Direct webhook response (no outbound HTTP calls)
-- Environment validation
-- Request routing
-
-**Import Dependencies**:
-```javascript
-const TelegramBot = require('node-telegram-bot-api');
-const setupWorkLoggerBot = require('../src/bot/bot');
-```
-
-### 2. Bot Setup Module (`src/bot/bot.js`)
-
-**Purpose**: Core bot configuration and initialization.
-
-**Responsibilities**:
-- Database connection establishment
-- Component initialization
-- Reminder scheduling (development mode)
-
-**Import Dependencies**:
-```javascript
-const Database = require('./services/database');
-const MessageParser = require('./handlers/messageParser');
-const Commands = require('./handlers/commands');
-const { createDailyReminder } = require('./services/reminder');
-```
-
-### 3. Database Module (`src/bot/services/database.js`)
-
-**Purpose**: MongoDB connection management and data operations.
-
-**Features**:
-- Connection pooling for serverless
-- Automatic reconnection handling
-- Optimized query operations
-- Schema validation
-
-**Key Methods**:
-```javascript
-class Database {
-  async connectToMongoDB()
-  async logWorkEntry(date, hours, tag, rawMessage)
-  async getTodayEntries(date)
-  async getLastEntries(limit)
-  async getWeeklyTotal(startDate, endDate)
-  async getCategoryTotal(tag)
-  async getEntriesBetween(startDate, endDate)
-  async getDatabaseStats()
-  async resetDatabase(createBackupFirst)
-  async validateAndRepairDatabase()
-}
-```
-
-### 4. Message Parser (`src/bot/handlers/messageParser.js`)
-
-**Purpose**: Natural language processing for work log messages.
-
-**Parsing Capabilities**:
-- Hour extraction (multiple formats)
-- Date recognition (relative and absolute)
-- Tag/category extraction
-- Input validation
-
-**API**:
-```javascript
-class MessageParser {
-  parseMessage(message)        // Main parsing function
-  extractTag(message)          // Tag extraction
-  formatHours(hours)          // Display formatting
-  isWorkLogMessage(message)   // Quick validation
-  extractHours(message)       // Hours-only extraction
-}
-```
-
-### 5. Commands Module (`src/bot/handlers/commands.js`)
-
-**Purpose**: Bot command processing and response generation.
-
-**Supported Commands**:
-- `/summary` - Weekly/monthly analytics
-- `/today` - Current day summary
-- `/log` - Recent entries
-- `/category` - Tag-based filtering
-- `/paycycle` - Bi-weekly summary with detailed entry list
-- `/help` - Usage instructions
-- `/stats` - Database statistics
-- `/validate` - Database integrity check
-- `/reset` - Database reset (with confirmation)
-- `/backup` - Create data backup
-
-**API**:
-```javascript
-class Commands {
-  async handleSummary()
-  async handleToday()
-  async handleLog()
-  async handleCategory(tag)
-  async handlePayCycle()
-  async handleStats()
-  async handleValidate()
-  async handleReset(confirmationArg)
-  async handleBackup()
-  getHelpMessage()
-}
-```
-
-### 6. Reminder System (`src/bot/services/reminder.js`)
-
-**Purpose**: Daily reminder scheduling and management.
-
-**Features**:
-- Configurable reminder times (3PM-11PM)
-- Smart scheduling across all days of the week
-- Skip if already logged
-- Multiple reminder messages
-- Serverless-aware implementation
-- Default timezone set to `Australia/Melbourne` for consistent cron alignment
-
-**API**:
-```javascript
-class DailyReminder {
-  start()                           // Start reminder scheduling
-  stop()                            // Stop reminders
-  async sendReminder()              // Send immediate reminder
-  async triggerManualReminder()     // Test reminder
-  getStatus()                       // Get system status
-  updateConfig(newConfig)           // Update settings
-}
-
-// Serverless helper functions
-function createDailyReminder(bot, userId, database)
-async function sendScheduledReminder(bot, userId, database, forceReminder)
-```
-
-### 7. Daily Reminder API (`api/reminder.js`)
-
-**Purpose**: External API endpoint for triggering reminders via GitHub Actions or cron services.
-
-**Features**:
-- Bearer token authentication
-- GitHub Actions integration
-- Test mode support
-- User authorization validation
-
-**API Endpoint**:
-```javascript
-POST /api/reminder
-Authorization: Bearer <REMINDER_SECRET>
-Content-Type: application/json
-
-{
-  "action": "send_daily",
-  "user_id": "123456789",
-  "source": "github_actions_production"
-}
-```
-
-## 🗄️ Database Design
-
-### Document Schema
-
-```javascript
-{
-  _id: ObjectId,              // MongoDB primary key
-  date: String,               // YYYY-MM-DD format
-  hours: Number,              // Decimal hours (0.1 - 24.0)
-  tag: String,                // Project/category (lowercase, trimmed)
-  raw_message: String,        // Original user message (max 500 chars)
-  timestamp: Date             // Auto-generated timestamp
-}
-```
-
-### Indexes
-
-```javascript
-// Performance optimization indexes
-db.workentries.createIndex({ "date": 1 })
-db.workentries.createIndex({ "tag": 1 })
-db.workentries.createIndex({ "timestamp": -1 })
-
-// Compound indexes for complex queries
-db.workentries.createIndex({ "date": 1, "tag": 1 })
-```
-
-### Data Validation
-
-**Schema Constraints**:
-- `date`: Must match YYYY-MM-DD pattern
-- `hours`: Range 0.1 to 24.0
-- `tag`: Trimmed and lowercased
-- `raw_message`: Maximum 500 characters
-
-**Application-Level Validation**:
-- Date range validation (±1 year from current)
-- Hour format validation
-- Tag meaningfulness checks
-
-## 🔌 API Reference
-
-### Webhook Endpoint
-
-**URL**: `POST /api/bot`
-**Purpose**: Receive Telegram webhook updates
-
-**Request Format**:
-```javascript
-{
-  "update_id": 123456789,
-  "message": {
-    "message_id": 123,
-    "from": {
-      "id": 987654321,
-      "is_bot": false,
-      "first_name": "User"
-    },
-    "chat": {
-      "id": 987654321,
-      "type": "private"
-    },
-    "date": 1640995200,
-    "text": "Worked 6 hours today"
-  }
-}
-```
-
-**Response Format**:
-```javascript
-{
-  "method": "sendMessage",
-  "chat_id": 987654321,
-  "text": "✅ Logged 6 hours for today.",
-  "parse_mode": "Markdown"
-}
-```
-
-### Internal API Methods
-
-#### Message Parsing
-
-```javascript
-// Parse natural language message
-const result = parser.parseMessage("Worked 6.5 hours on project X yesterday");
-// Returns:
-{
-  hours: 6.5,
-  date: "2024-01-14",
-  tag: "project x",
-  isValidWorkLog: true
-}
-```
-
-#### Database Operations
-
-```javascript
-// Log work entry
-const entry = await db.logWorkEntry("2024-01-15", 8.0, "coding", "Worked 8 hours coding today");
-
-// Get summaries
-const weeklyData = await db.getWeeklyTotal("2024-01-08", "2024-01-14");
-const categoryData = await db.getCategoryTotal("coding");
-```
-
-## 🔄 Message Processing Pipeline
-
-### 1. Request Reception
-```
-Telegram → Webhook URL → Vercel Function → Request Handler
-```
-
-### 2. Authentication
-```javascript
-if (userId !== authorizedUserId) {
-  return unauthorizedResponse;
-}
-```
-
-### 3. Message Classification
-```javascript
-if (text.startsWith('/')) {
-  return handleCommand(text, chatId);
-} else {
-  return handleWorkLogMessage(text, chatId);
-}
-```
-
-### 4. Work Log Processing
-```
-Raw Message → Parser → Validation → Database → Confirmation
-```
-
-### 5. Command Processing
-```
-Command → Router → Handler → Database Query → Response Formatter
-```
-
-### 6. Response Delivery
-```
-Response Object → Webhook Response → Telegram → User
-```
-
-## 🚀 Deployment Architecture
-
-### Serverless Function Model
-
-**Platform Support**:
-- ✅ Vercel (Primary)
-- ✅ Railway
-- ✅ Render
-- ✅ Fly.io
-
-**Function Configuration**:
+## 2. Module Reference
+| Layer | Key Files | Responsibility |
+|-------|-----------|----------------|
+| Webhook | `api/bot.js` | Validate env, route Telegram updates, reuse bot instance. |
+| Reminder API | `api/reminder.js` | Authenticated endpoint used by GitHub Actions; honours reminder window & force mode. |
+| Bot setup | `src/bot/bot.js` | Connect MongoDB, wire parser + commands, optionally bootstrap reminders. |
+| Commands | `src/bot/handlers/commands.js` | Handle `/summary`, `/today`, `/log`, `/category`, `/paycycle`, admin actions, pay estimates & holiday handling. |
+| Parser | `src/bot/handlers/messageParser.js` | Extract hours, normalize dates, infer tags, basic validation. |
+| Database | `src/bot/services/database.js` | Mongo connection pooling, CRUD helpers, stats & validation utilities. |
+| Reminder engine | `src/bot/services/reminder.js` | Schedules random-time reminders (3–11 PM in `DEFAULT_TIMEZONE`), supports holiday-aware pay output when triggered. |
+
+## 3. Data Model (`work_entries`)
 ```json
 {
-  "functions": {
-    "api/bot.js": {
-      "maxDuration": 30
-    }
-  }
+  "_id": ObjectId,
+  "date": "YYYY-MM-DD",
+  "hours": Number,
+  "tag": "lowercase tag or null",
+  "raw_message": "original Telegram text",
+  "timestamp": ISODate
 }
 ```
+**Indexes:** `{date:1}`, `{tag:1}`, `{timestamp:-1}`, optional `{date:1, tag:1}` for pay-cycle/category lookups.
 
-### Environment Variables
+## 4. Runtime Flow Highlights
+1. **Webhook message** → authorize user → command or work-log branch.
+2. **Work logs** → parser normalises (`today`, `yesterday`, specific dates) → `database.logWorkEntry` → confirmation reply.
+3. **Commands** reuse shared helpers:
+   - `/summary` & `/paycycle` aggregate hours + pay breakdown (weekday/weekend/holiday).
+   - `/category` without args lists available tags; with a tag returns totals.
+4. **Holiday pay**: any entry whose tag matches `PAY_RATE_HOLIDAY_TAGS` uses the holiday rate in calculations and is flagged in responses.
+5. **Reminders**: serverless helper refuses to run inside webhook window; GitHub Actions hits `/api/reminder` 4× daily, deterministic slot chooses one send.
 
-**Required Configuration**:
-```bash
-TELEGRAM_BOT_TOKEN=<bot_token>      # Telegram bot authentication
-AUTHORIZED_USER_ID=<user_id>        # Single user authorization
-MONGODB_URI=<connection_string>     # Database connection
+## 5. Configuration Cheat Sheet
+### Required
+```
+TELEGRAM_BOT_TOKEN
+AUTHORIZED_USER_ID
+MONGODB_URI
 ```
 
-**Optional Configuration**:
-```bash
-NODE_ENV=production                 # Environment mode
-LOG_LEVEL=info                      # Logging verbosity
-PAY_RATE=45.0                       # Base hourly rate (fallback for all days)
-PAY_RATE_WEEKDAY=45.0               # Weekday hourly rate override
-PAY_RATE_WEEKEND=60.0               # Weekend fallback rate
-PAY_RATE_SATURDAY=55.0              # Saturday hourly rate override
-PAY_RATE_SUNDAY=65.0                # Sunday hourly rate override
-PAY_RATE_CURRENCY=AUD               # Currency code for formatting (Intl)
-PAY_RATE_LOCALE=en-AU               # Locale used for formatting values
-PAY_RATE_SYMBOL=$                   # Fallback symbol if Intl formatter fails
-PAY_RATE_HOLIDAY=80.0               # Public-holiday hourly rate override
-PAY_RATE_HOLIDAY_TAGS=holiday,public_holiday   # Tags treated as holidays
-PAY_RATE_HOLIDAY_MESSAGE=Public Holiday        # Label used in summaries
+### Optional highlights
 ```
-
-> The reminder scheduler uses the hard-coded timezone defined in `src/bot/services/reminder.js` (`DEFAULT_TIMEZONE`, defaulting to Australia/Melbourne). Update that constant and the cron schedule when deploying in other regions.
-> Holiday detection defaults to the tags `holiday`, `public_holiday`, and `public holiday`; override with `PAY_RATE_HOLIDAY_TAGS` as needed.
-
-### Database Deployment
-
-**MongoDB Atlas (Recommended)**:
-- Free tier sufficient for personal use
-- Automatic backups and scaling
-- Global distribution
-- Advanced security features
-
-**Connection String Format**:
+PAY_RATE, PAY_RATE_WEEKDAY/SATURDAY/SUNDAY
+PAY_RATE_WEEKEND (fallback for Sat/Sun)
+PAY_RATE_HOLIDAY
+PAY_RATE_HOLIDAY_TAGS=holiday,public_holiday,public holiday
+PAY_RATE_HOLIDAY_MESSAGE="Public Holiday"
+PAY_RATE_CURRENCY / PAY_RATE_LOCALE / PAY_RATE_SYMBOL
+REMINDER_SECRET (shared with GitHub Actions)
+DEFAULT_TIMEZONE (set in reminder service; defaults to Australia/Melbourne)
 ```
-mongodb+srv://username:password@cluster.mongodb.net/database?retryWrites=true&w=majority
-```
-
-## 🔒 Security Implementation
-
-### Authentication Layer
-
-```javascript
-// Single user authorization
-const authorizedUserId = parseInt(process.env.AUTHORIZED_USER_ID);
-if (userId !== authorizedUserId) {
-  return unauthorizedResponse;
-}
-```
-
-### Input Validation
-
-```javascript
-// Message validation
-if (!message || typeof message !== 'string') {
-  return invalidInputResponse;
-}
-
-// Hour range validation
-if (hours < 0.1 || hours > 24) {
-  return invalidHoursResponse;
-}
-```
-
-### Database Security
-
-**Connection Security**:
-- TLS encryption for all connections
-- Authentication required
-- Network access restrictions
-
-**Data Protection**:
-- No sensitive data stored
-- User data isolation
-- Audit logging
-
-### Environment Security
-
-**Best Practices**:
-- Environment variables for secrets
-- No hardcoded credentials
-- Platform-specific security features
-- HTTPS-only communication
-
-## ⚡ Performance Optimizations
-
-### Database Optimizations
-
-**Connection Management**:
-```javascript
-// Singleton connection pattern
-if (this.isConnected && mongoose.connection.readyState === 1) {
-  return; // Reuse existing connection
-}
-```
-
-**Query Optimization**:
-```javascript
-// Lean queries for better performance
-return await WorkEntry.find({ date })
-  .sort({ timestamp: -1 })
-  .lean(); // No Mongoose document overhead
-```
-
-**Indexing Strategy**:
-- Primary queries indexed
-- Compound indexes for complex operations
-- Background index creation
-
-### Serverless Optimizations
-
-**Cold Start Reduction**:
-- Minimal dependencies
-- Efficient initialization
-- Connection reuse
-
-**Memory Management**:
-- Lean database queries
-- Efficient object creation
-- Garbage collection optimization
-
-### Response Time Optimization
-
-**Parallel Operations**:
-```javascript
-// Parallel database queries
-const [weekEntries, monthEntries] = await Promise.all([
-  this.db.getEntriesBetween(startOfWeek, endOfWeek),
-  this.db.getEntriesBetween(startOfMonth, endOfMonth)
-]);
-```
-
-**Efficient Formatting**:
-- Pre-computed values
-- Minimal string operations
-- Cached responses where appropriate
-
-## 🚨 Error Handling
-
-### Error Categories
-
-**1. Input Errors**:
-- Invalid message format
-- Out-of-range values
-- Missing required parameters
-
-**2. System Errors**:
-- Database connection failures
-- Authentication errors
-- Network timeouts
-
-**3. Business Logic Errors**:
-- Invalid date ranges
-- Duplicate entries
-- Permission violations
-
-### Error Response Strategy
-
-```javascript
-try {
-  // Operation
-} catch (error) {
-  console.error('Detailed error for logs:', error);
-  return {
-    chatId,
-    text: '❌ User-friendly error message'
-  };
-}
-```
-
-### Graceful Degradation
-
-**Database Unavailable**:
-- Return cached responses when possible
-- Provide meaningful error messages
-- Suggest retry actions
-
-**Partial Failures**:
-- Return partial results with warnings
-- Identify failed operations
-- Provide recovery instructions
-
-## 🧪 Testing Strategy
-
-### Unit Testing
-
-**Test Coverage Areas**:
-- Message parsing logic
-- Database operations
-- Command handlers
-- Utility functions
-
-**Example Test**:
-```javascript
-describe('MessageParser', () => {
-  test('should parse hours correctly', () => {
-    const parser = new MessageParser();
-    const result = parser.parseMessage('Worked 6.5 hours today');
-    expect(result.hours).toBe(6.5);
-    expect(result.isValidWorkLog).toBe(true);
-  });
-});
-```
-
-### Integration Testing
-
-**Webhook Testing**:
-```javascript
-// Test webhook endpoint
-const response = await request(app)
-  .post('/api/bot')
-  .send(mockTelegramUpdate)
-  .expect(200);
-```
-
-**Database Testing**:
-```javascript
-// Test database operations
-const entry = await db.logWorkEntry('2024-01-15', 8, 'test', 'Test message');
-expect(entry.hours).toBe(8);
-```
-
-### Manual Testing
-
-**Telegram Integration**:
-- Real bot testing with actual messages
-- Command validation
-- Error scenario testing
-- Performance testing
-
-## 📊 Monitoring and Logging
-
-### Application Logging
-
-**Log Levels**:
-- `ERROR`: System errors and failures
-- `WARN`: Recoverable issues
-- `INFO`: General operation info
-- `DEBUG`: Detailed execution traces
-
-**Log Format**:
-```javascript
-console.log(`[${timestamp}] ${level}: ${message}`, {
-  userId,
-  messageId,
-  operation,
-  duration
-});
-```
-
-### Performance Monitoring
-
-**Key Metrics**:
-- Response time
-- Database query performance
-- Error rates
-- Memory usage
-
-**Health Checks**:
-```javascript
-// Basic health endpoint
-app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'healthy',
-    timestamp: new Date().toISOString(),
-    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
-  });
-});
-```
-
-### Production Monitoring
-
-**Platform Tools**:
-- Vercel Analytics
-- MongoDB Atlas Monitoring
-- Platform-specific logging
-
-**Custom Metrics**:
-- Message processing rate
-- User engagement
-- Command usage statistics
-- Error patterns
-
----
-
-## 🔧 Development Workflow
-
-### Local Development Setup
-
-1. **Environment Setup**:
-   ```bash
-   npm install
-   cp .env.example .env
-   # Configure environment variables
-   ```
-
-2. **Database Setup**:
-   ```bash
-   # Local MongoDB
-   mongod --dbpath ./data
-   
-   # Or use MongoDB Atlas
-   ```
-
-3. **Development Server**:
-   ```bash
-   npm run dev
-   ```
-
-### Code Style Guidelines
-
-**ESLint Configuration**:
-```json
-{
-  "extends": ["eslint:recommended"],
-  "rules": {
-    "no-console": "warn",
-    "prefer-const": "error",
-    "no-var": "error"
-  }
-}
-```
-
-**Naming Conventions**:
-- Classes: PascalCase
-- Functions: camelCase
-- Constants: UPPER_SNAKE_CASE
-- Files: camelCase
-
-### Deployment Process
-
-1. **Code Review**: All changes reviewed
-2. **Testing**: Comprehensive test suite
-3. **Staging**: Deploy to staging environment
-4. **Production**: Deploy to production platform
-5. **Monitoring**: Verify deployment health
-
----
-
-This technical documentation provides a comprehensive overview of the Telegram Work Hours Logger Bot architecture, implementation details, and operational considerations. It serves as a reference for developers working on the project and for understanding the system's design decisions.
+When no pay rates are provided, summaries omit the earnings sections.
+
+## 6. Deployment Notes
+- **Primary target:** Vercel (serverless). Also tested on Railway/Render/Fly.
+- **GitHub Actions:** `daily-reminder.yml` runs 4 cron slots (0–6 weekdays+weekend) and calls `/api/reminder` with the correct headers.
+- **Local dev:** run `node bot.js` (polling mode). Reminders rely on long-running process; for production use cron + `/api/reminder`.
+
+## 7. Operations & Testing
+- **Security:** single-user authorization via `AUTHORIZED_USER_ID`. All secrets live in env vars; bot token must never hit logs.
+- **Logging:** use host platform logs (`console.log`). Reminder endpoint logs send decisions (`Within window`, `Outside window`).
+- **Testing:** manual Telegram checks remain primary; parser/command helpers follow unit-testable boundaries (`messageParser`, `database`).
+- **Monitoring:** MongoDB Atlas metrics + hosting platform logs cover most telemetry needs.
+
+## 8. Quick Troubleshooting
+- **Unexpected 401** → confirm `AUTHORIZED_USER_ID` and bearer token (`REMINDER_SECRET`).
+- **No reminders** → check GitHub Actions logs; ensure send slot matched current run and env includes `PAY_RATE*`/timezone as expected.
+- **Date logging off** → retest parser with `12-15`, `15-12`, `12/15`, ISO formats; adjust `_parseSpecificDate` if needed.
+
+This summary is intentionally concise—use the in-code comments and API docs for deeper detail.
