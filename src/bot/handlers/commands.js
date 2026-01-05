@@ -68,6 +68,58 @@ function getCurrentPayCycle(today = moment()) {
 }
 
 /**
+ * Calculates the last N pay cycles (including current cycle)
+ * 
+ * Pay cycles are 14-day periods starting from PAY_CYCLE_START.
+ * This function returns an array of pay cycle objects, starting from the current cycle
+ * and going back N-1 cycles.
+ * 
+ * @param {number} count - Number of pay cycles to return (default: 5, max: 10)
+ * @param {moment.Moment} today - Current date (defaults to today)
+ * @returns {Array<Object>} Array of pay cycle objects with cycleStart and cycleEnd
+ */
+function getPayCycles(count = 5, today = moment()) {
+  const maxCycles = 10;
+  const numCycles = Math.min(Math.max(1, Math.floor(count)), maxCycles);
+  
+  const start = moment(PAY_CYCLE_START).startOf('day');
+  const currentDate = moment(today).startOf('day');
+  
+  // Calculate days difference from the start date
+  const daysSinceStart = currentDate.diff(start, 'days');
+  
+  // Calculate which cycle we're currently in (0-based)
+  let currentCycleIndex = 0;
+  if (daysSinceStart >= 0) {
+    currentCycleIndex = Math.floor(daysSinceStart / 14);
+  }
+  
+  const cycles = [];
+  
+  // Generate cycles going backwards from current cycle
+  for (let i = 0; i < numCycles; i++) {
+    const cycleIndex = currentCycleIndex - i;
+    
+    // Don't go before the first cycle
+    if (cycleIndex < 0) {
+      break;
+    }
+    
+    const cycleStart = start.clone().add(cycleIndex * 14, 'days');
+    const cycleEnd = cycleStart.clone().add(13, 'days'); // 14 days total (0-13)
+    
+    cycles.push({
+      cycleStart: cycleStart.format('YYYY-MM-DD'),
+      cycleEnd: cycleEnd.format('YYYY-MM-DD'),
+      cycleNumber: cycleIndex + 1, // 1-based cycle number
+      isCurrent: i === 0 // First cycle in array is the current one
+    });
+  }
+  
+  return cycles;
+}
+
+/**
  * Parse numeric environment variables safely
  *
  * @param {string|undefined|null} value - Raw value from environment
@@ -720,6 +772,127 @@ class Commands {
   }
 
   /**
+   * Handles /paycycles command - shows hours for the last 5 pay cycles
+   * 
+   * Displays work hours summary for the last 5 pay cycles (including current) with:
+   * - Pay cycle date ranges
+   * - Total hours and breakdown by day type for each cycle
+   * - Entry counts
+   * - Pay estimates if configured
+   * 
+   * @returns {Promise<string>} Formatted pay cycles summary
+   */
+  async handlePayCycles() {
+    try {
+      if (!this.db) {
+        return '❌ Database not available. Cannot retrieve pay cycles.';
+      }
+
+      const cycles = getPayCycles(5);
+      
+      if (cycles.length === 0) {
+        return '📅 No pay cycles found.';
+      }
+
+      let response = `📊 *Last ${cycles.length} Pay Cycles*\n\n`;
+
+      // Process each cycle
+      const cycleSummaries = [];
+      for (const cycle of cycles) {
+        const entries = await this.db.getEntriesBetween(cycle.cycleStart, cycle.cycleEnd);
+        const totals = calculateHoursByType(entries);
+        const { weekdayHours, saturdayHours, sundayHours, holiday } = totals;
+        const total = totals.total;
+        
+        let cyclePay = null;
+        if (PAY_RATES_ENABLED) {
+          cyclePay = calculatePayTotals({
+            weekdayHours,
+            saturdayHours,
+            sundayHours,
+            holidayHours: holiday
+          });
+        }
+
+        cycleSummaries.push({
+          ...cycle,
+          entries: Array.isArray(entries) ? entries : [],
+          totals,
+          pay: cyclePay
+        });
+      }
+
+      // Build response for each cycle
+      cycleSummaries.forEach((summary, index) => {
+        const { cycleStart, cycleEnd, isCurrent, entries, totals, pay } = summary;
+        const { weekdayHours, saturdayHours, sundayHours, holiday } = totals;
+        const formattedTotal = this.parser.formatHours(totals.total);
+        const currentLabel = isCurrent ? ' (Current)' : '';
+        
+        response += `🗓️ *Cycle ${cycleSummaries.length - index}*${currentLabel}: ${cycleStart} to ${cycleEnd}\n`;
+        response += `   ⏳ Total: ${formattedTotal} hours (${entries.length} entries)\n`;
+        response += `   🏢 Weekdays: ${this.parser.formatHours(weekdayHours)}h\n`;
+        response += `   📆 Saturday: ${this.parser.formatHours(saturdayHours)}h\n`;
+        response += `   ☀️ Sunday: ${this.parser.formatHours(sundayHours)}h`;
+        
+        if (holiday.total > 0) {
+          response += `\n   ${HOLIDAY_DISPLAY}: ${this.parser.formatHours(holiday.total)}h`;
+        }
+
+        if (PAY_RATES_ENABLED && pay) {
+          const cyclePayTotal = pay.weekday + pay.saturday + pay.sunday + pay.holiday;
+          response += `\n   💰 Earnings: ${formatCurrency(cyclePayTotal)}`;
+        }
+
+        response += '\n\n';
+      });
+
+      // Add summary totals
+      const grandTotals = {
+        totalHours: 0,
+        totalEntries: 0,
+        weekdayHours: 0,
+        saturdayHours: 0,
+        sundayHours: 0,
+        holidayTotal: 0,
+        totalPay: 0
+      };
+
+      cycleSummaries.forEach(summary => {
+        grandTotals.totalHours += summary.totals.total;
+        grandTotals.totalEntries += summary.entries.length;
+        grandTotals.weekdayHours += summary.totals.weekdayHours;
+        grandTotals.saturdayHours += summary.totals.saturdayHours;
+        grandTotals.sundayHours += summary.totals.sundayHours;
+        grandTotals.holidayTotal += summary.totals.holiday.total;
+        if (summary.pay) {
+          grandTotals.totalPay += summary.pay.weekday + summary.pay.saturday + summary.pay.sunday + summary.pay.holiday;
+        }
+      });
+
+      response += `📈 *Summary (${cycles.length} cycles):*\n`;
+      response += `   ⏳ Total Hours: ${this.parser.formatHours(grandTotals.totalHours)}h\n`;
+      response += `   📝 Total Entries: ${grandTotals.totalEntries}\n`;
+      response += `   🏢 Weekdays: ${this.parser.formatHours(grandTotals.weekdayHours)}h\n`;
+      response += `   📆 Saturday: ${this.parser.formatHours(grandTotals.saturdayHours)}h\n`;
+      response += `   ☀️ Sunday: ${this.parser.formatHours(grandTotals.sundayHours)}h`;
+      
+      if (grandTotals.holidayTotal > 0) {
+        response += `\n   ${HOLIDAY_DISPLAY}: ${this.parser.formatHours(grandTotals.holidayTotal)}h`;
+      }
+
+      if (PAY_RATES_ENABLED && grandTotals.totalPay > 0) {
+        response += `\n   💰 Total Earnings: ${formatCurrency(grandTotals.totalPay)}`;
+      }
+
+      return response;
+    } catch (error) {
+      console.error('Error in handlePayCycles:', error);
+      return '❌ Error generating pay cycles summary. Please try again.';
+    }
+  }
+
+  /**
    * Returns comprehensive help message with usage instructions and available commands
    * 
    * Provides:
@@ -771,6 +944,7 @@ class Commands {
            `• /log - Last 5 work entries with timestamps\n` +
            `• /category <tag> - Hours for specific category/project\n` +
           `• /paycycle - Current pay cycle summary with detailed entry list\n` +
+           `• /paycycles - Last 5 pay cycles summary with totals and pay estimates\n` +
            `• /delete [n] - Preview last n entries (default 5, max 10)\n` +
            `• /delete confirm 1,3,4 - Delete specific items by preview index (1-10)\n` +
            `• /help - Show this help message\n\n` +

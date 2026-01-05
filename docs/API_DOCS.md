@@ -54,6 +54,7 @@ Example response body:
 | `/log` | Latest 5 entries (holiday entries flagged). |
 | `/category [tag]` | Without a tag, lists available tags. With a tag, returns totals for that category. |
 | `/paycycle` | Current pay-cycle hours and detailed entry list (capped 50). |
+| `/paycycles` | Last 5 pay cycles summary with totals, breakdowns, and pay estimates. |
 | `/help` | Overview of commands plus configured pay rates. |
 | `/stats` | Database totals + tag count. |
 | `/validate` | Runs database integrity checks. |

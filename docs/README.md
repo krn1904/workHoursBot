@@ -28,6 +28,7 @@ For deeper architecture context, see the [Technical Overview](TECHNICAL_DOCS.md)
 | `/log` | Latest 5 entries (newest first). |
 | `/category [tag]` | Lists all tags when omitted; totals and entry count when provided. |
 | `/paycycle` | Current pay-cycle hours plus a detailed entry list (capped 50). |
+| `/paycycles` | Last 5 pay cycles summary with totals and pay estimates. |
 | `/help` | Cheat sheet including configured pay rates. |
 | `/delete …` | Preview/delete the most recent entries (confirmation required). |
 | `/stats`, `/validate`, `/reset confirm`, `/backup`, `/reminder …` | Admin utilities. |
