@@ -720,21 +720,6 @@ class Commands {
   }
 
   /**
-   * Legacy handler to support /paycyclelog and /paycycle detail aliases.
-   *
-   * @returns {Promise<string>} Consolidated pay cycle summary and entry list
-   */
-  async handlePayCycleLog() {
-    try {
-      // Reuse consolidated pay cycle handler so aliases return identical output
-      return await this.handlePayCycle();
-    } catch (error) {
-      console.error('Error in handlePayCycleLog:', error);
-      return '❌ Error generating pay cycle log. Please try again.';
-    }
-  }
-
-  /**
    * Returns comprehensive help message with usage instructions and available commands
    * 
    * Provides:

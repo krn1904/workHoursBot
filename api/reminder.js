@@ -87,7 +87,7 @@ module.exports = async (req, res) => {
     let db = null;
     if (process.env.MONGODB_URI) {
       try {
-        const Database = require('../database');
+        const Database = require('../src/bot/services/database');
         db = new Database();
       } catch (e) {
         console.warn('⚠️ Database module not available, continuing without DB check');
