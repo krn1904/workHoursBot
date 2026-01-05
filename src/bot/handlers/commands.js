@@ -931,13 +931,16 @@ class Commands {
            `📅 *Current Pay Cycle:* ${cycleStart} to ${cycleEnd}\n\n` +
            `💡 *Quick Start:*\n` +
            `• Send a message like "Worked 6 hours today"\n` +
-           `• Use /help to see all commands\n` +
-           `• Use /paycycle to check current cycle hours\n\n` +
+           `• Use /summary to see weekly and monthly totals\n` +
+           `• Use /paycycle to check current cycle hours\n` +
+           `• Use /paycycles to view last 5 pay cycles for payslip verification\n\n` +
            `📝 *Log work by sending messages like:*\n` +
            `• "Worked 6 hours today"\n` +
            `• "5.5 hrs on freelance"\n` +
            `• "Yesterday I did 3 hours on project X"\n` +
-           `• "8.25 hours coding on 12/15"\n\n` +
+           `• "8.25 hours coding on 12/15"\n` +
+           `• "Worked 8 hours on holiday" (uses holiday pay rate)\n` +
+           `• "7.5 hours on public holiday" (uses holiday pay rate)\n\n` +
            `⚡ *Available Commands:*\n` +
            `• /summary - Weekly and monthly totals with day breakdown\n` +
            `• /today - Today's logged hours and entries\n` +
@@ -956,6 +959,7 @@ class Commands {
            `• Tags are automatically extracted (e.g., "coding", "client work")\n` +
            `• Supports various time formats (6h, 5.5 hours, 3 hrs)\n` +
            `• Recognizes "today", "yesterday", and specific dates\n` +
+           `• Use tags like "holiday", "public_holiday", or "public holiday" for holiday pay rates\n` +
            `• All data is stored securely in your database` +
            payRateSection;
   }

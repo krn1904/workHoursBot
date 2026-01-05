@@ -80,7 +80,12 @@ All responses are Markdown-formatted and include emojis for clarity. Pay breakdo
 - Dates recognised: ISO (`2025-01-15`), slash/dash (`12/15`, `15-12`), keywords (`today`, `yesterday`).
 - Tags: lowest-case tokens extracted from trailing words (configurable via `PAY_RATE_HOLIDAY_TAGS` for holiday detection).
 
-Holiday pay is activated when `tag` matches any configured holiday tag; those entries are called out in command output and pay estimations.
+**Holiday pay**: Activated when `tag` matches any configured holiday tag. Examples:
+- `"Worked 8 hours on holiday"` → Tag: `holiday` → Uses holiday pay rate
+- `"7.5 hours on public holiday"` → Tag: `public holiday` → Uses holiday pay rate
+- `"6 hrs on public_holiday"` → Tag: `public_holiday` → Uses holiday pay rate
+
+Holiday entries are flagged in command output (🎉 Public Holiday) and use the holiday rate in pay calculations.
 
 ---
 
