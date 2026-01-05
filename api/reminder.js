@@ -89,8 +89,14 @@ module.exports = async (req, res) => {
       try {
         const Database = require('../src/bot/services/database');
         db = new Database();
+        // Connect to database immediately to ensure it's available for the check
+        await db.connectToMongoDB();
+        console.log('✅ Database connected for reminder check');
       } catch (e) {
-        console.warn('⚠️ Database module not available, continuing without DB check');
+        console.error('❌ Failed to connect to database for reminder check:', e.message);
+        console.warn('⚠️ Reminder will be sent without DB check (cannot verify if hours already logged)');
+        // Set db to null so reminder knows DB is unavailable
+        db = null;
       }
     } else {
       console.log('ℹ️ MONGODB_URI not set; reminder will be sent without DB check');

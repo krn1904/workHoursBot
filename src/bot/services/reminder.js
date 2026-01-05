@@ -240,14 +240,23 @@ class DailyReminder {
       if (this.config.skipIfAlreadyLogged && this.database) {
         const today = now.format('YYYY-MM-DD');
         try {
+          console.log(`🔍 Checking if hours already logged for ${today}...`);
+          // Ensure database is connected before querying
+          await this.database.connectToMongoDB();
           const todayEntries = await this.database.getTodayEntries(today);
           if (todayEntries && todayEntries.length > 0) {
-            console.log('✅ User already logged hours today, skipping reminder');
+            console.log(`✅ User already logged ${todayEntries.length} entr${todayEntries.length === 1 ? 'y' : 'ies'} today (${today}), skipping reminder`);
             return;
+          } else {
+            console.log(`ℹ️ No entries found for ${today}, reminder will be sent`);
           }
         } catch (e) {
-          // If DB is not configured or unreachable, continue to send reminder
-          console.warn('⚠️ Could not check today entries (DB unavailable). Proceeding to send reminder.');
+          // If DB check fails, log the error but still send reminder (better safe than sorry)
+          // This handles cases where DB is temporarily unavailable
+          console.error('❌ Error checking today entries:', e.message);
+          console.error('📋 Error details:', e.stack || e);
+          console.warn('⚠️ Cannot verify if hours are logged. Sending reminder anyway (DB check failed).');
+          // Continue to send reminder - if user already logged, they can ignore it
         }
       }
       
