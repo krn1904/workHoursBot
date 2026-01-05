@@ -81,9 +81,11 @@ module.exports = async (req, res) => {
         if (response) {
           // Use bot.sendMessage for reliable message delivery
           try {
-            await bot.sendMessage(response.chatId, response.text, {
-              parse_mode: response.parseMode
-            });
+            const options = {};
+            if (response.parseMode) {
+              options.parse_mode = response.parseMode;
+            }
+            await bot.sendMessage(response.chatId, response.text, options);
             return res.status(200).json({ ok: true });
           } catch (sendError) {
             console.error('Failed to send message:', sendError.message);
