@@ -945,8 +945,8 @@ class Commands {
            `• /summary - Weekly and monthly totals with day breakdown\n` +
            `• /today - Today's logged hours and entries\n` +
            `• /log - Last 5 work entries with timestamps\n` +
-           `• /category <tag> - Hours for specific category/project\n` +
-          `• /paycycle - Current pay cycle summary with detailed entry list\n` +
+           `• /category [tag] - Hours for specific category/project\n` +
+           `• /paycycle - Current pay cycle summary with detailed entry list\n` +
            `• /paycycles - Last 5 pay cycles summary with totals and pay estimates\n` +
            `• /delete [n] - Preview last n entries (default 5, max 10)\n` +
            `• /delete confirm 1,3,4 - Delete specific items by preview index (1-10)\n` +

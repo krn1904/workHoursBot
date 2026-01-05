@@ -79,6 +79,8 @@ module.exports = async (req, res) => {
         const response = await processUpdateWithResponse(req.body);
         
         if (response) {
+          console.log(`📤 Sending response to chat ${response.chatId}, text length: ${response.text?.length}`);
+          
           // Send response directly back to Telegram via webhook response
           // This avoids outbound HTTP requests that can fail in serverless environments
           return res.status(200).json({
