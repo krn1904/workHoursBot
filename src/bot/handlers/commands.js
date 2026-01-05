@@ -328,7 +328,7 @@ class Commands {
           return '🗑️ No entries found to delete.';
         }
 
-        let preview = `🗑️ <b>Delete Preview</b> — Last ${entries.length} entr${entries.length === 1 ? 'y' : 'ies'}\n\n`;
+        let preview = `🗑️ Delete Preview — Last ${entries.length} entr${entries.length === 1 ? 'y' : 'ies'}\n\n`;
         entries.forEach((e, i) => {
           const hours = this.parser.formatHours(e.hours);
           const tag = e.tag ? ` 🏷️ [${e.tag}]` : '';
@@ -435,12 +435,12 @@ class Commands {
       const monthHours = this.parser.formatHours(month.total);
 
       // Build formatted response message with emojis for better UX
-      let response = `📊 <b>Work Summary</b>\n\n` +
-        `📅 <b>This Week:</b> ${weekHours} hours (${weekEntries.length} entries)\n` +
+      let response = `📊 Work Summary\n\n` +
+        `📅 This Week: ${weekHours} hours (${weekEntries.length} entries)\n` +
         `   🏢 Weekdays: ${this.parser.formatHours(week.weekdayHours)}h\n` +
         `   📆 Saturday: ${this.parser.formatHours(week.saturdayHours)}h\n` +
         `   ☀️ Sunday: ${this.parser.formatHours(week.sundayHours)}h\n\n` +
-        `🗓️ <b>This Month:</b> ${monthHours} hours (${monthEntries.length} entries)\n` +
+        `🗓️ This Month: ${monthHours} hours (${monthEntries.length} entries)\n` +
         `   🏢 Weekdays: ${this.parser.formatHours(month.weekdayHours)}h\n` +
         `   📆 Saturday: ${this.parser.formatHours(month.saturdayHours)}h\n` +
         `   ☀️ Sunday: ${this.parser.formatHours(month.sundayHours)}h`;
@@ -489,7 +489,7 @@ class Commands {
           monthLines.push(`      • ${HOLIDAY_DISPLAY}: ${formatCurrency(monthPay.holiday)}`);
         }
 
-        response += `\n\n💰 <b>Estimated Earnings</b>\n` + weekLines.join('\n') + '\n' + monthLines.join('\n');
+        response += `\n\n💰 Estimated Earnings\n` + weekLines.join('\n') + '\n' + monthLines.join('\n');
       }
 
       return response;
@@ -526,7 +526,7 @@ class Commands {
       const formattedTotal = this.parser.formatHours(total);
 
       // Build response with individual entries
-      let response = `📅 <b>Today's Work Log</b> (${formattedTotal} hours total)\n` +
+      let response = `📅 Today's Work Log (${formattedTotal} hours total)\n` +
         `   🏢 Weekdays: ${this.parser.formatHours(weekdayHours)}h\n` +
         `   📆 Saturday: ${this.parser.formatHours(saturdayHours)}h\n` +
         `   ☀️ Sunday: ${this.parser.formatHours(sundayHours)}h`;
@@ -596,7 +596,7 @@ class Commands {
       }
 
       // Build response with entry details
-      let response = '📝 <b>Last 5 Work Entries</b>\n\n';
+      let response = '📝 Last 5 Work Entries\n\n';
       
       // Format each entry with date and time information
       entries.forEach((entry, index) => {
@@ -644,7 +644,7 @@ class Commands {
 
         const limit = 50;
         const displayed = tags.slice(0, limit);
-        let response = '🏷️ <b>Available Tags</b>\n\n' + displayed.map(t => `• ${t}`).join('\n');
+        let response = '🏷️ AVAILABLE TAGS\n\n' + displayed.map(t => `• ${t}`).join('\n');
 
         if (tags.length > limit) {
           response += `\n… +${tags.length - limit} more`;
@@ -671,7 +671,7 @@ class Commands {
 
       // Format and return category summary
       const hours = this.parser.formatHours(data.totalHours);
-      return `🗂️ <b>Category:</b> "${trimmedTag}"\n\n` +
+      return `🗂️ Category: "${trimmedTag}"\n\n` +
              `⏱️ Total Hours: ${hours}\n` +
              `📝 Total Entries: ${data.entries}`;
     } catch (error) {
@@ -702,7 +702,7 @@ class Commands {
       const total = totals.total;
       const formattedTotal = this.parser.formatHours(total);
 
-      let response = `🗓️ <b>Current Pay Cycle</b> (${cycleStart} to ${cycleEnd})\n\n` +
+      let response = `🗓️ Current Pay Cycle (${cycleStart} to ${cycleEnd})\n\n` +
         `   ⏳ Total: ${formattedTotal} hours (${entries.length} entries)\n` +
         `   🏢 Weekdays: ${this.parser.formatHours(weekdayHours)}h\n` +
         `   📆 Saturday: ${this.parser.formatHours(saturdayHours)}h\n` +
@@ -749,7 +749,7 @@ class Commands {
       }
 
       const displayedCount = entries.length;
-      response += `\n\n📄 <b>Entries (newest first)</b> — Showing ${displayedCount}${truncated ? ` of ${totalCount}` : ''} entr${displayedCount === 1 ? 'y' : 'ies'}\n\n`;
+      response += `\n\n📄 Entries (newest first) — Showing ${displayedCount}${truncated ? ` of ${totalCount}` : ''} entr${displayedCount === 1 ? 'y' : 'ies'}\n\n`;
 
       entries.forEach((e, i) => {
         const date = moment(e.date).format('YYYY-MM-DD');
@@ -794,7 +794,7 @@ class Commands {
         return '📅 No pay cycles found.';
       }
 
-      let response = `📊 <b>Last ${cycles.length} Pay Cycles</b>\n\n`;
+      let response = `📊 Last ${cycles.length} Pay Cycles\n\n`;
 
       // Process each cycle
       const cycleSummaries = [];
@@ -829,7 +829,7 @@ class Commands {
         const formattedTotal = this.parser.formatHours(totals.total);
         const currentLabel = isCurrent ? ' (Current)' : '';
         
-        response += `🗓️ <b>Cycle ${cycleSummaries.length - index}</b>${currentLabel}: ${cycleStart} to ${cycleEnd}\n`;
+        response += `🗓️ Cycle ${cycleSummaries.length - index}${currentLabel}: ${cycleStart} to ${cycleEnd}\n`;
         response += `   ⏳ Total: ${formattedTotal} hours (${entries.length} entries)\n`;
         response += `   🏢 Weekdays: ${this.parser.formatHours(weekdayHours)}h\n`;
         response += `   📆 Saturday: ${this.parser.formatHours(saturdayHours)}h\n`;
@@ -870,7 +870,7 @@ class Commands {
         }
       });
 
-      response += `📈 <b>Summary (${cycles.length} cycles):</b>\n`;
+      response += `📈 Summary (${cycles.length} cycles):\n`;
       response += `   ⏳ Total Hours: ${this.parser.formatHours(grandTotals.totalHours)}h\n`;
       response += `   📝 Total Entries: ${grandTotals.totalEntries}\n`;
       response += `   🏢 Weekdays: ${this.parser.formatHours(grandTotals.weekdayHours)}h\n`;
@@ -922,26 +922,26 @@ class Commands {
         rateLines.push(`   ${HOLIDAY_DISPLAY}: ${formatCurrency(PAY_RATES.holiday)} per hour`);
       }
       if (rateLines.length > 0) {
-        payRateSection = `\n\n💰 <b>Configured Pay Rates:</b>\n` + rateLines.join('\n');
+        payRateSection = `\n\n💰 Configured Pay Rates:\n` + rateLines.join('\n');
       }
     }
 
-    return `🤖 <b>Work Hours Bot Help</b>\n\n` +
-           `👋 <b>Welcome!</b> Your work hours tracking bot is ready.\n\n` +
-           `📅 <b>Current Pay Cycle:</b> ${cycleStart} to ${cycleEnd}\n\n` +
-           `💡 <b>Quick Start:</b>\n` +
+    return `🤖 Work Hours Bot Help\n\n` +
+           `👋 Welcome! Your work hours tracking bot is ready.\n\n` +
+           `📅 Current Pay Cycle: ${cycleStart} to ${cycleEnd}\n\n` +
+           `💡 Quick Start:\n` +
            `• Send a message like "Worked 6 hours today"\n` +
            `• Use /summary to see weekly and monthly totals\n` +
            `• Use /paycycle to check current cycle hours\n` +
            `• Use /paycycles to view last 5 pay cycles for payslip verification\n\n` +
-           `📝 <b>Log work by sending messages like:</b>\n` +
+           `📝 Log work by sending messages like:\n` +
            `• "Worked 6 hours today"\n` +
            `• "5.5 hrs on freelance"\n` +
            `• "Yesterday I did 3 hours on project X"\n` +
            `• "8.25 hours coding on 12/15"\n` +
            `• "Worked 8 hours on holiday" (uses holiday pay rate)\n` +
            `• "7.5 hours on public holiday" (uses holiday pay rate)\n\n` +
-           `⚡ <b>Available Commands:</b>\n` +
+           `⚡ Available Commands:\n` +
            `• /summary - Weekly and monthly totals with day breakdown\n` +
            `• /today - Today's logged hours and entries\n` +
            `• /log - Last 5 work entries with timestamps\n` +
@@ -951,11 +951,11 @@ class Commands {
            `• /delete [n] - Preview last n entries (default 5, max 10)\n` +
            `• /delete confirm 1,3,4 - Delete specific items by preview index (1-10)\n` +
            `• /help - Show this help message\n\n` +
-           `🔧 <b>Admin Commands:</b>\n` +
+           `🔧 Admin Commands:\n` +
            `• /stats - Database statistics and overview\n` +
            `• /reset confirm - Reset database (⚠️ DESTRUCTIVE)\n` +
            `• /validate - Check database integrity\n\n` +
-           `🏷️ <b>Tips:</b>\n` +
+           `🏷️ Tips:\n` +
            `• Tags are automatically extracted (e.g., "coding", "client work")\n` +
            `• Supports various time formats (6h, 5.5 hours, 3 hrs)\n` +
            `• Recognizes "today", "yesterday", and specific dates\n` +
@@ -993,13 +993,13 @@ class Commands {
         }
       }
 
-      return `📊 <b>Database Statistics</b>\n\n` +
-             `📈 <b>Overview:</b>\n` +
+      return `📊 Database Statistics\n\n` +
+             `📈 Overview:\n` +
              `   📝 Total Entries: ${stats.totalEntries}\n` +
              `   ⏱️ Total Hours: ${formattedTotalHours}\n` +
              `   📅 Date Range: ${dateRangeText}\n` +
              `   🏷️ Categories: ${stats.uniqueTags}\n\n` +
-             `🏷️ <b>Available Tags:</b>\n` +
+             `🏷️ Available Tags:\n` +
              `   ${tagsText}\n\n` +
              `ℹ️ Use /validate to check database integrity`;
     } catch (error) {
@@ -1024,11 +1024,11 @@ class Commands {
       const validation = await this.db.validateAndRepairDatabase();
       
       if (validation.issuesFound === 0) {
-        return `✅ <b>Database Validation Complete</b>\n\n` +
+        return `✅ Database Validation Complete\n\n` +
                `🎉 No issues found! Your database is healthy.\n\n` +
                `📊 Validation completed at: ${new Date(validation.validationTimestamp).toLocaleString()}`;
       } else {
-        let response = `⚠️ <b>Database Validation Complete</b>\n\n` +
+        let response = `⚠️ Database Validation Complete\n\n` +
                       `🔍 Found ${validation.issuesFound} issue(s):\n\n`;
         
         validation.issues.forEach((issue, index) => {
@@ -1069,7 +1069,7 @@ class Commands {
         const stats = await this.db.getDatabaseStats();
         
         if (stats.totalEntries === 0) {
-          return `📊 <b>Database Reset</b>\n\n` +
+          return `📊 Database Reset\n\n` +
                  `ℹ️ Database is already empty (0 entries).\n` +
                  `No reset needed.`;
         }
@@ -1079,24 +1079,24 @@ class Commands {
           ? `${stats.dateRange.earliest} to ${stats.dateRange.latest}`
           : 'No entries';
         
-        return `⚠️ <b>DATABASE RESET WARNING</b>\n\n` +
+        return `⚠️ DATABASE RESET WARNING\n\n` +
                `🚨 This will permanently delete ALL work entries!\n\n` +
-               `📊 <b>Current Database:</b>\n` +
+               `📊 Current Database:\n` +
                `   📝 Entries: ${stats.totalEntries}\n` +
                `   ⏱️ Hours: ${formattedTotalHours}\n` +
                `   📅 Range: ${dateRangeText}\n` +
                `   🏷️ Categories: ${stats.uniqueTags}\n\n` +
                `💾 A backup will be created before deletion.\n\n` +
-               `⚠️ <b>TO CONFIRM RESET, SEND:</b>\n` +
+               `⚠️ TO CONFIRM RESET, SEND:\n` +
                `\`/reset confirm\`\n\n` +
-               `❌ <b>This action cannot be undone!</b>`;
+               `❌ This action cannot be undone!`;
       }
 
       // Proceed with reset
       const resetResult = await this.db.resetDatabase(true);
       
       if (resetResult.success) {
-        return `✅ <b>Database Reset Complete</b>\n\n` +
+        return `✅ Database Reset Complete\n\n` +
                `🗑️ Deleted ${resetResult.deletedEntries} entries\n` +
                `💾 Backup created: ${resetResult.backupCreated} entries\n` +
                `🕒 Reset at: ${new Date(resetResult.resetTimestamp).toLocaleString()}\n\n` +
@@ -1122,13 +1122,13 @@ class Commands {
       const backupData = await this.db.createBackup();
       
       if (backupData.length === 0) {
-        return `📊 <b>Backup Status</b>\n\n` +
+        return `📊 Backup Status\n\n` +
                `ℹ️ Database is empty (0 entries).\n` +
                `No backup needed.`;
       }
       
       // In a real implementation, you might want to save this to a file or cloud storage
-      return `✅ <b>Backup Created</b>\n\n` +
+      return `✅ Backup Created\n\n` +
              `💾 Backed up ${backupData.length} entries\n` +
              `🕒 Backup created at: ${new Date().toLocaleString()}\n\n` +
              `ℹ️ Backup is stored in memory during this session.\n` +
@@ -1155,42 +1155,42 @@ class Commands {
       
       switch (actionLower) {
         case 'status':
-          return `🔔 <b>Daily Reminder Status</b>\n\n` +
-                 `⏰ <b>Schedule:</b> Random time between 3:00 PM - 11:00 PM\n` +
-                 `📅 <b>Active Days:</b> Every day (Monday - Sunday)\n` +
-                 `🎯 <b>Purpose:</b> Reminds you to log your daily work hours\n` +
-                 `🤖 <b>Smart Skip:</b> Won't remind if you've already logged hours today\n\n` +
-                 `💡 <b>Note:</b> Reminders work best in always-on deployments.\n` +
+          return `🔔 Daily Reminder Status\n\n` +
+                 `⏰ Schedule: Random time between 3:00 PM - 11:00 PM\n` +
+                 `📅 Active Days: Every day (Monday - Sunday)\n` +
+                 `🎯 Purpose: Reminds you to log your daily work hours\n` +
+                 `🤖 Smart Skip: Won't remind if you've already logged hours today\n\n` +
+                 `💡 Note: Reminders work best in always-on deployments.\n` +
                  `For serverless platforms, consider external cron services.\n\n` +
-                 `⚡ <b>Commands:</b>\n` +
+                 `⚡ Commands:\n` +
                  `• \`/reminder status\` - Show this status\n` +
                  `• \`/reminder test\` - Send test reminder now\n` +
                  `• \`/reminder info\` - Detailed information`;
         
         case 'test':
           // This would trigger a manual reminder
-          return `🧪 <b>Test Reminder</b>\n\n` +
+          return `🧪 Test Reminder\n\n` +
                  `⏰ Time to log your work hours! How many hours did you work today?\n\n` +
-                 `💡 <b>This is what your daily reminders look like!</b>\n` +
+                 `💡 This is what your daily reminders look like!\n` +
                  `Actual reminders will be sent randomly between 3:00 PM - 11:00 PM each day.\n\n` +
                  `📝 Just reply with something like: "Worked 8 hours today"`;
         
         case 'info':
-          return `📋 <b>Daily Reminder Information</b>\n\n` +
-                 `🎯 <b>Purpose:</b> Encourage consistent work hour logging\n\n` +
-                 `⏰ <b>Timing:</b>\n` +
+          return `📋 Daily Reminder Information\n\n` +
+                 `🎯 Purpose: Encourage consistent work hour logging\n\n` +
+                 `⏰ Timing:\n` +
                  `   • Random time between 3:00 PM - 11:00 PM\n` +
                  `   • Every day of the week (Monday - Sunday)\n` +
                  `   • Different time each day to stay engaging\n\n` +
-                 `🧠 <b>Smart Features:</b>\n` +
+                 `🧠 Smart Features:\n` +
                  `   • Skips reminder if you've already logged hours\n` +
                  `   • Contextual messages based on time of day\n` +
                  `   • 20+ different reminder messages to avoid repetition\n\n` +
-                 `💬 <b>Message Examples:</b>\n` +
+                 `💬 Message Examples:\n` +
                  `   • "⏰ Time to log your work hours!"\n` +
                  `   • "📊 Daily check-in: How many hours today?"\n` +
                  `   • "🌟 Time to record today's work hours!"\n\n` +
-                 `🔧 <b>For Developers:</b>\n` +
+                 `🔧 For Developers:\n` +
                  `   • Works in always-on server environments\n` +
                  `   • Limited functionality in serverless deployments\n` +
                  `   • Can integrate with external cron services`;
