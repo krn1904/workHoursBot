@@ -230,6 +230,15 @@ async function handleCommand(text, chatId) {
           response = await commands.handlePayCycle();
         }
         break;
+      case '/paycycles':
+        {
+          const Database = require('../src/bot/services/database');
+          const db = new Database();
+          await db.connectToMongoDB();
+          const commands = new Commands(db, parser);
+          response = await commands.handlePayCycles();
+        }
+        break;
       case '/delete':
         {
           const Database = require('../src/bot/services/database');
