@@ -5,7 +5,7 @@ Track daily work hours by chatting with your own Telegram bot. Messages are pars
 ## How It Works
 - **Webhook**: Telegram sends updates to `/api/bot`; we authenticate the sender and route either to command handlers or work-log parsing.
 - **Logging**: Natural language like “Worked 6 hours on design yesterday” becomes a normalised entry (`date`, `hours`, `tag`, `raw_message`, `timestamp`).
-- **Summaries**: `/summary`, `/today`, `/paycycle`, etc. aggregate from MongoDB and return Markdown responses with pay breakdowns when configured.
+- **Summaries**: `/summary`, `/today`, `/paycycle`, `/paycycles`, etc. aggregate from MongoDB and return Markdown responses with pay breakdowns when configured.
 - **Reminders**: GitHub Actions triggers `/api/reminder` four times daily (only one run sends); the reminder engine checks the 3–11 PM window in `DEFAULT_TIMEZONE`.
 - **Tags & pay**: Any entry whose tag matches `PAY_RATE_HOLIDAY_TAGS` uses the holiday rate. `/category` without arguments shows all discovered tags so you can drill into one.
 
