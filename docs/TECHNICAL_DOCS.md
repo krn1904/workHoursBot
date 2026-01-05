@@ -64,6 +64,7 @@ PAY_RATE_HOLIDAY
 PAY_RATE_HOLIDAY_TAGS=holiday,public_holiday,public holiday
 PAY_RATE_HOLIDAY_MESSAGE="Public Holiday"
 PAY_RATE_CURRENCY / PAY_RATE_LOCALE / PAY_RATE_SYMBOL
+DATE_FORMAT_PREFERENCE (DMY or MDY; defaults to DMY for DD/MM/YYYY)
 REMINDER_SECRET (shared with GitHub Actions)
 DEFAULT_TIMEZONE (set in reminder service; defaults to Australia/Melbourne)
 ```
