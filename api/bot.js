@@ -80,15 +80,29 @@ module.exports = async (req, res) => {
         
         if (response) {
           console.log(`📤 Sending response to chat ${response.chatId}, text length: ${response.text?.length}`);
+          console.log(`📤 Parse mode: ${response.parseMode}`);
           
-          // Send response directly back to Telegram via webhook response
-          // This avoids outbound HTTP requests that can fail in serverless environments
-          return res.status(200).json({
-            method: 'sendMessage',
-            chat_id: response.chatId,
-            text: response.text,
-            parse_mode: response.parseMode || undefined
-          });
+          // Use bot.sendMessage for reliable message delivery
+          // Webhook responses can fail silently with Markdown parsing issues
+          try {
+            await bot.sendMessage(response.chatId, response.text, {
+              parse_mode: response.parseMode
+            });
+            console.log('✅ Message sent successfully');
+            return res.status(200).json({ ok: true });
+          } catch (sendError) {
+            console.error('❌ Failed to send message:', sendError.message);
+            console.error('Error details:', sendError);
+            // Try again without parse_mode
+            try {
+              await bot.sendMessage(response.chatId, response.text);
+              console.log('✅ Message sent without parse_mode');
+              return res.status(200).json({ ok: true });
+            } catch (retryError) {
+              console.error('❌ Retry also failed:', retryError.message);
+              return res.status(200).json({ ok: true });
+            }
+          }
         } else {
           // No response needed, acknowledge receipt
           return res.status(200).json({ ok: true });
@@ -276,6 +290,7 @@ async function handleCommand(text, chatId) {
             console.log('✅ Commands instance created');
             response = commands.getHelpMessage();
             console.log(`✅ Help message generated, length: ${response ? response.length : 'undefined'}`);
+            console.log(`📝 First 100 chars: ${response ? response.substring(0, 100) : 'N/A'}`);
             if (!response) {
               console.error('ERROR: getHelpMessage returned undefined or null');
               response = '❌ Error generating help message. Please try again.';
