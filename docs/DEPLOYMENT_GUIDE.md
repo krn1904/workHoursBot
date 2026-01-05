@@ -29,6 +29,10 @@ PAY_RATE_HOLIDAY_MESSAGE=Public Holiday
 PAY_RATE_CURRENCY=AUD
 PAY_RATE_LOCALE=en-AU
 PAY_RATE_SYMBOL=$
+
+# Date format preference (optional)
+DATE_FORMAT_PREFERENCE=DMY
+# Options: DMY (DD/MM/YYYY, default) or MDY (MM/DD/YYYY)
 ```
 Holiday pay activates when a log message includes any tag from `PAY_RATE_HOLIDAY_TAGS`.
 
