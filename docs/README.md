@@ -63,7 +63,10 @@ DATE_FORMAT_PREFERENCE=DMY
 REMINDER_SECRET=...
 ```
 - Leave the pay variables unset or zero to hide earnings in outputs.
-- Holiday pay activates when the message tag matches any value in `PAY_RATE_HOLIDAY_TAGS` (e.g. “Worked 8 hours on holiday”).
+- **Holiday pay**: Activates when the message tag matches any value in `PAY_RATE_HOLIDAY_TAGS`. Examples:
+  - `"Worked 8 hours on holiday"` → Uses holiday pay rate
+  - `"7.5 hours on public holiday"` → Uses holiday pay rate
+  - `"6 hrs on public_holiday"` → Uses holiday pay rate
 - `DEFAULT_TIMEZONE` inside `src/bot/services/reminder.js` defaults to Australia/Melbourne; change it (and cron schedules) if you deploy elsewhere.
 
 ## Reminders at a Glance

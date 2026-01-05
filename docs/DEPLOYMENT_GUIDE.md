@@ -34,7 +34,10 @@ PAY_RATE_SYMBOL=$
 DATE_FORMAT_PREFERENCE=DMY
 # Options: DMY (DD/MM/YYYY, default) or MDY (MM/DD/YYYY)
 ```
-Holiday pay activates when a log message includes any tag from `PAY_RATE_HOLIDAY_TAGS`.
+**Holiday pay**: Activates when a log message includes any tag from `PAY_RATE_HOLIDAY_TAGS`. Examples:
+- `"Worked 8 hours on holiday"` → Uses holiday pay rate
+- `"7.5 hours on public holiday"` → Uses holiday pay rate
+- `"6 hrs on public_holiday"` → Uses holiday pay rate
 
 ## 3. Recommended Flow (Vercel)
 1. **Import repo** in Vercel and connect GitHub.
