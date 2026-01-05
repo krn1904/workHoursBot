@@ -94,6 +94,17 @@ module.exports = async (req, res) => {
         
       } catch (updateError) {
         console.error('Error processing update:', updateError);
+        console.error('Error stack:', updateError.stack);
+        
+        // Try to send error message to user if we have chat info
+        if (req.body && req.body.message && req.body.message.chat) {
+          return res.status(200).json({
+            method: 'sendMessage',
+            chat_id: req.body.message.chat.id,
+            text: '❌ Sorry, an error occurred while processing your request. Please try again.'
+          });
+        }
+        
         // Always return 200 to prevent Telegram from retrying
         return res.status(200).json({ ok: true });
       }
@@ -152,7 +163,13 @@ async function processUpdateWithResponse(update) {
 
   // Handle bot commands (starting with /)
   if (text && text.startsWith('/')) {
-    return await handleCommand(text, chatId);
+    console.log(`📨 Processing command: ${text}`);
+    const commandResponse = await handleCommand(text, chatId);
+    console.log(`✅ Command response generated:`, commandResponse ? 'Response exists' : 'Response is null/undefined');
+    if (commandResponse) {
+      console.log(`📝 Response text length: ${commandResponse.text ? commandResponse.text.length : 'N/A'}`);
+    }
+    return commandResponse;
   }
 
   // Handle natural language work log messages
@@ -250,9 +267,22 @@ async function handleCommand(text, chatId) {
         break;
       case '/help':
         {
-          // Help doesn't need DB
-          const commands = new Commands(null, parser);
-          response = commands.getHelpMessage();
+          try {
+            console.log('🔧 Processing /help command...');
+            // Help doesn't need DB
+            const commands = new Commands(null, parser);
+            console.log('✅ Commands instance created');
+            response = commands.getHelpMessage();
+            console.log(`✅ Help message generated, length: ${response ? response.length : 'undefined'}`);
+            if (!response) {
+              console.error('ERROR: getHelpMessage returned undefined or null');
+              response = '❌ Error generating help message. Please try again.';
+            }
+          } catch (helpError) {
+            console.error('ERROR in /help command:', helpError);
+            console.error('ERROR stack:', helpError.stack);
+            response = '❌ Error generating help message. Please try again.';
+          }
         }
         break;
       case '/stats':
@@ -301,6 +331,13 @@ async function handleCommand(text, chatId) {
       default:
         response = `❌ Unknown command: ${command}\n\nUse /help to see available commands.`;
         break;
+    }
+    
+    // Safety check: ensure response is set
+    if (!response || typeof response !== 'string') {
+      console.error('ERROR: response is not a valid string for command:', command);
+      console.error('Response value:', response);
+      response = '❌ Error processing command. Please try again.';
     }
     
     return {
