@@ -263,6 +263,7 @@ async function handleCommand(text, chatId) {
         }
         break;
       case '/help':
+      case '/start':
         {
           // Help doesn't need DB
           const commands = new Commands(null, parser);
