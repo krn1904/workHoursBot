@@ -926,22 +926,22 @@ class Commands {
       }
     }
 
-    return `🤖 *Work Hours Bot Help*\n\n` +
-           `👋 *Welcome!* Your work hours tracking bot is ready.\n\n` +
-           `📅 *Current Pay Cycle:* ${cycleStart} to ${cycleEnd}\n\n` +
-           `💡 *Quick Start:*\n` +
+    return `🤖 <b>Work Hours Bot Help</b>\n\n` +
+           `👋 <b>Welcome!</b> Your work hours tracking bot is ready.\n\n` +
+           `📅 <b>Current Pay Cycle:</b> ${cycleStart} to ${cycleEnd}\n\n` +
+           `💡 <b>Quick Start:</b>\n` +
            `• Send a message like "Worked 6 hours today"\n` +
            `• Use /summary to see weekly and monthly totals\n` +
            `• Use /paycycle to check current cycle hours\n` +
            `• Use /paycycles to view last 5 pay cycles for payslip verification\n\n` +
-           `📝 *Log work by sending messages like:*\n` +
+           `📝 <b>Log work by sending messages like:</b>\n` +
            `• "Worked 6 hours today"\n` +
            `• "5.5 hrs on freelance"\n` +
            `• "Yesterday I did 3 hours on project X"\n` +
            `• "8.25 hours coding on 12/15"\n` +
            `• "Worked 8 hours on holiday" (uses holiday pay rate)\n` +
            `• "7.5 hours on public holiday" (uses holiday pay rate)\n\n` +
-           `⚡ *Available Commands:*\n` +
+           `⚡ <b>Available Commands:</b>\n` +
            `• /summary - Weekly and monthly totals with day breakdown\n` +
            `• /today - Today's logged hours and entries\n` +
            `• /log - Last 5 work entries with timestamps\n` +
@@ -951,11 +951,11 @@ class Commands {
            `• /delete [n] - Preview last n entries (default 5, max 10)\n` +
            `• /delete confirm 1,3,4 - Delete specific items by preview index (1-10)\n` +
            `• /help - Show this help message\n\n` +
-           `🔧 *Admin Commands:*\n` +
+           `🔧 <b>Admin Commands:</b>\n` +
            `• /stats - Database statistics and overview\n` +
            `• /reset confirm - Reset database (⚠️ DESTRUCTIVE)\n` +
            `• /validate - Check database integrity\n\n` +
-           `🏷️ *Tips:*\n` +
+           `🏷️ <b>Tips:</b>\n` +
            `• Tags are automatically extracted (e.g., "coding", "client work")\n` +
            `• Supports various time formats (6h, 5.5 hours, 3 hrs)\n` +
            `• Recognizes "today", "yesterday", and specific dates\n` +

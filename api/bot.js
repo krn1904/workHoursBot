@@ -79,27 +79,20 @@ module.exports = async (req, res) => {
         const response = await processUpdateWithResponse(req.body);
         
         if (response) {
-          console.log(`📤 Sending response to chat ${response.chatId}, text length: ${response.text?.length}`);
-          console.log(`📤 Parse mode: ${response.parseMode}`);
-          
           // Use bot.sendMessage for reliable message delivery
-          // Webhook responses can fail silently with Markdown parsing issues
           try {
             await bot.sendMessage(response.chatId, response.text, {
               parse_mode: response.parseMode
             });
-            console.log('✅ Message sent successfully');
             return res.status(200).json({ ok: true });
           } catch (sendError) {
-            console.error('❌ Failed to send message:', sendError.message);
-            console.error('Error details:', sendError);
+            console.error('Failed to send message:', sendError.message);
             // Try again without parse_mode
             try {
               await bot.sendMessage(response.chatId, response.text);
-              console.log('✅ Message sent without parse_mode');
               return res.status(200).json({ ok: true });
             } catch (retryError) {
-              console.error('❌ Retry also failed:', retryError.message);
+              console.error('Retry also failed:', retryError.message);
               return res.status(200).json({ ok: true });
             }
           }
@@ -110,17 +103,6 @@ module.exports = async (req, res) => {
         
       } catch (updateError) {
         console.error('Error processing update:', updateError);
-        console.error('Error stack:', updateError.stack);
-        
-        // Try to send error message to user if we have chat info
-        if (req.body && req.body.message && req.body.message.chat) {
-          return res.status(200).json({
-            method: 'sendMessage',
-            chat_id: req.body.message.chat.id,
-            text: '❌ Sorry, an error occurred while processing your request. Please try again.'
-          });
-        }
-        
         // Always return 200 to prevent Telegram from retrying
         return res.status(200).json({ ok: true });
       }
@@ -172,20 +154,14 @@ async function processUpdateWithResponse(update) {
   if (text && text.trim().toLowerCase() === 'hi') {
     return {
       chatId,
-      text: `🤖 **Work Hours Bot is Ready!**\n\n👋 Hello! Your work hours tracking bot is now active.\n\n💡 **Quick Start:**\n• Send a message like "Worked 6 hours today"\n• Use /help to see all commands`,
-      parseMode: 'Markdown'
+      text: `🤖 <b>Work Hours Bot is Ready!</b>\n\n👋 Hello! Your work hours tracking bot is now active.\n\n💡 <b>Quick Start:</b>\n• Send a message like "Worked 6 hours today"\n• Use /help to see all commands`,
+      parseMode: 'HTML'
     };
   }
 
   // Handle bot commands (starting with /)
   if (text && text.startsWith('/')) {
-    console.log(`📨 Processing command: ${text}`);
-    const commandResponse = await handleCommand(text, chatId);
-    console.log(`✅ Command response generated:`, commandResponse ? 'Response exists' : 'Response is null/undefined');
-    if (commandResponse) {
-      console.log(`📝 Response text length: ${commandResponse.text ? commandResponse.text.length : 'N/A'}`);
-    }
-    return commandResponse;
+    return await handleCommand(text, chatId);
   }
 
   // Handle natural language work log messages
@@ -283,23 +259,9 @@ async function handleCommand(text, chatId) {
         break;
       case '/help':
         {
-          try {
-            console.log('🔧 Processing /help command...');
-            // Help doesn't need DB
-            const commands = new Commands(null, parser);
-            console.log('✅ Commands instance created');
-            response = commands.getHelpMessage();
-            console.log(`✅ Help message generated, length: ${response ? response.length : 'undefined'}`);
-            console.log(`📝 First 100 chars: ${response ? response.substring(0, 100) : 'N/A'}`);
-            if (!response) {
-              console.error('ERROR: getHelpMessage returned undefined or null');
-              response = '❌ Error generating help message. Please try again.';
-            }
-          } catch (helpError) {
-            console.error('ERROR in /help command:', helpError);
-            console.error('ERROR stack:', helpError.stack);
-            response = '❌ Error generating help message. Please try again.';
-          }
+          // Help doesn't need DB
+          const commands = new Commands(null, parser);
+          response = commands.getHelpMessage();
         }
         break;
       case '/stats':
@@ -352,15 +314,14 @@ async function handleCommand(text, chatId) {
     
     // Safety check: ensure response is set
     if (!response || typeof response !== 'string') {
-      console.error('ERROR: response is not a valid string for command:', command);
-      console.error('Response value:', response);
+      console.error('Invalid response for command:', command);
       response = '❌ Error processing command. Please try again.';
     }
     
     return {
       chatId,
       text: response,
-      parseMode: 'Markdown'
+      parseMode: 'HTML'
     };
     
   } catch (error) {
