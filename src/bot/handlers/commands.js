@@ -829,7 +829,7 @@ class Commands {
         const formattedTotal = this.parser.formatHours(totals.total);
         const currentLabel = isCurrent ? ' (Current)' : '';
         
-        response += `🗓️ <b>Cycle ${cycleSummaries.length - index}*${currentLabel}: ${cycleStart} to ${cycleEnd}\n`;
+        response += `🗓️ <b>Cycle ${cycleSummaries.length - index}</b>${currentLabel}: ${cycleStart} to ${cycleEnd}\n`;
         response += `   ⏳ Total: ${formattedTotal} hours (${entries.length} entries)\n`;
         response += `   🏢 Weekdays: ${this.parser.formatHours(weekdayHours)}h\n`;
         response += `   📆 Saturday: ${this.parser.formatHours(saturdayHours)}h\n`;
@@ -870,7 +870,7 @@ class Commands {
         }
       });
 
-      response += `📈 <b>Summary (${cycles.length} cycles):*\n`;
+      response += `📈 <b>Summary (${cycles.length} cycles):</b>\n`;
       response += `   ⏳ Total Hours: ${this.parser.formatHours(grandTotals.totalHours)}h\n`;
       response += `   📝 Total Entries: ${grandTotals.totalEntries}\n`;
       response += `   🏢 Weekdays: ${this.parser.formatHours(grandTotals.weekdayHours)}h\n`;
@@ -1087,7 +1087,7 @@ class Commands {
                `   📅 Range: ${dateRangeText}\n` +
                `   🏷️ Categories: ${stats.uniqueTags}\n\n` +
                `💾 A backup will be created before deletion.\n\n` +
-               `⚠️ *<b>TO CONFIRM RESET, SEND:</b>*\n` +
+               `⚠️ <b>TO CONFIRM RESET, SEND:</b>\n` +
                `\`/reset confirm\`\n\n` +
                `❌ <b>This action cannot be undone!</b>`;
       }
@@ -1177,7 +1177,7 @@ class Commands {
         
         case 'info':
           return `📋 <b>Daily Reminder Information</b>\n\n` +
-                 `🎯 *<b>Purpose:</b>* Encourage consistent work hour logging\n\n` +
+                 `🎯 <b>Purpose:</b> Encourage consistent work hour logging\n\n` +
                  `⏰ <b>Timing:</b>\n` +
                  `   • Random time between 3:00 PM - 11:00 PM\n` +
                  `   • Every day of the week (Monday - Sunday)\n` +
