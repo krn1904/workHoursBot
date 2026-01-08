@@ -85,8 +85,6 @@ module.exports = async (req, res) => {
             if (response.parseMode) {
               options.parse_mode = response.parseMode;
             }
-            console.log('Sending message with options:', JSON.stringify(options));
-            console.log('Response parseMode:', response.parseMode);
             await bot.sendMessage(response.chatId, response.text, options);
             return res.status(200).json({ ok: true });
           } catch (sendError) {
