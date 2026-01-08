@@ -644,7 +644,7 @@ class Commands {
 
         const limit = 50;
         const displayed = tags.slice(0, limit);
-        let response = '🏷️ <b>Available Tags</b>\n\n' + displayed.map(t => `• ${t}`).join('\n');
+        let response = '🏷️ AVAILABLE TAGS\n\n' + displayed.map(t => `• ${t}`).join('\n');
 
         if (tags.length > limit) {
           response += `\n… +${tags.length - limit} more`;
@@ -829,7 +829,7 @@ class Commands {
         const formattedTotal = this.parser.formatHours(totals.total);
         const currentLabel = isCurrent ? ' (Current)' : '';
         
-        response += `🗓️ <b>Cycle ${cycleSummaries.length - index}${currentLabel}: ${cycleStart} to ${cycleEnd}\n`;
+        response += `🗓️ <b>Cycle ${cycleSummaries.length - index}${currentLabel}:</b> ${cycleStart} to ${cycleEnd}\n`;
         response += `   ⏳ Total: ${formattedTotal} hours (${entries.length} entries)\n`;
         response += `   🏢 Weekdays: ${this.parser.formatHours(weekdayHours)}h\n`;
         response += `   📆 Saturday: ${this.parser.formatHours(saturdayHours)}h\n`;
@@ -870,7 +870,7 @@ class Commands {
         }
       });
 
-      response += `📈 <b>Summary (${cycles.length} cycles):\n`;
+      response += `📈 <b>Summary (${cycles.length} cycles):</b>\n`;
       response += `   ⏳ Total Hours: ${this.parser.formatHours(grandTotals.totalHours)}h\n`;
       response += `   📝 Total Entries: ${grandTotals.totalEntries}\n`;
       response += `   🏢 Weekdays: ${this.parser.formatHours(grandTotals.weekdayHours)}h\n`;
