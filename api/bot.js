@@ -239,7 +239,7 @@ async function handleCommand(text, chatId) {
           const db = new Database();
           await db.connectToMongoDB();
           const commands = new Commands(db, parser);
-          response = await commands.handlePayCycle();
+          response = await commands.handlePayCycle(arg);
         }
         break;
       case '/paycycles':
@@ -248,7 +248,7 @@ async function handleCommand(text, chatId) {
           const db = new Database();
           await db.connectToMongoDB();
           const commands = new Commands(db, parser);
-          response = await commands.handlePayCycles();
+          response = await commands.handlePayCycles(arg);
         }
         break;
       case '/delete':
