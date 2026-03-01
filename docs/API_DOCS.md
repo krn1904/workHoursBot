@@ -53,8 +53,8 @@ Example response body:
 | `/today` | Today’s entries with per-tag details and pay summary. |
 | `/log` | Latest 5 entries (holiday entries flagged). |
 | `/category [tag]` | Without a tag, lists available tags. With a tag, returns totals for that category. |
-| `/paycycle` | Current pay-cycle hours and detailed entry list (capped 50). |
-| `/paycycles` | Last 5 pay cycles summary with totals, breakdowns, and pay estimates. |
+| `/paycycle [tag]` | Current pay-cycle hours and detailed entry list (capped 50). Works standalone or with optional tag parameter to filter entries. |
+| `/paycycles [tag]` | Last 5 pay cycles summary with totals, breakdowns, and pay estimates. Works standalone or with optional tag parameter to filter all cycles. |
 | `/help` | Overview of commands plus configured pay rates. |
 | `/stats` | Database totals + tag count. |
 | `/validate` | Runs database integrity checks. |
@@ -63,6 +63,15 @@ Example response body:
 | `/reminder` | Manual reminder info/test helper (no DB required). |
 
 All responses are Markdown-formatted and include emojis for clarity. Pay breakdown sections only appear when at least one `PAY_RATE*` environment variable is non-zero.
+
+**Tag Filtering for Pay Cycles**: Both `/paycycle` and `/paycycles` **work standalone without any parameters** and support optional tag filtering:
+- `/paycycle` - Shows all entries in current pay cycle (default usage)
+- `/paycycle project1` - Shows only entries tagged with "project1" in current cycle
+- `/paycycles` - Shows last 5 pay cycles with all entries (default usage)
+- `/paycycles freelance` - Shows last 5 pay cycles filtered to "freelance" tag only
+- Tag parameter is completely optional - commands function perfectly without it
+- Filtering uses case-insensitive partial matching (e.g., "proj" matches "project1", "project2")
+- Displays match count vs total entries when filtering is active
 
 ---
 

@@ -697,7 +697,8 @@ class Commands {
       let entries = await this.db.getEntriesBetween(cycleStart, cycleEnd);
       entries = Array.isArray(entries) ? entries : [];
       
-      // Filter by tag if specified
+      // Filter by tag if specified (case-insensitive partial match)
+      // This allows users to view paycycle for specific projects/categories only
       const originalCount = entries.length;
       if (tag) {
         const tagLower = tag.toLowerCase().trim();
@@ -710,9 +711,11 @@ class Commands {
       const total = totals.total;
       const formattedTotal = this.parser.formatHours(total);
 
+      // Add tag filter indicator to header if filtering is active
       const tagFilter = tag ? ` 🏷️ [${tag}]` : '';
       let response = `🗓️ <b>Current Pay Cycle${tagFilter}</b> (${cycleStart} to ${cycleEnd})\n\n`;
       
+      // Show filtering info: how many entries match vs total entries
       if (tag) {
         response += `   🔍 Filtered by tag: <b>${tag}</b>\n`;
         response += `   📊 Showing ${entries.length} of ${originalCount} total entries\n\n`;
@@ -811,6 +814,7 @@ class Commands {
         return '📅 No pay cycles found.';
       }
 
+      // Add tag filter indicator to header if filtering is active
       const tagFilter = tag ? ` 🏷️ [${tag}]` : '';
       let response = `📊 Last ${cycles.length} Pay Cycles${tagFilter}\n\n`;
       
@@ -818,7 +822,7 @@ class Commands {
         response += `🔍 Filtered by tag: <b>${tag}</b>\n\n`;
       }
 
-      // Process each cycle
+      // Process each cycle and apply tag filtering if specified
       const cycleSummaries = [];
       let totalOriginalEntries = 0;
       for (const cycle of cycles) {
@@ -826,7 +830,7 @@ class Commands {
         const originalCount = Array.isArray(entries) ? entries.length : 0;
         totalOriginalEntries += originalCount;
         
-        // Filter by tag if specified
+        // Filter entries by tag using case-insensitive partial match
         if (tag && Array.isArray(entries)) {
           const tagLower = tag.toLowerCase().trim();
           entries = entries.filter(e => e.tag && e.tag.toLowerCase().includes(tagLower));
@@ -903,6 +907,7 @@ class Commands {
 
       response += `📈 <b>Summary (${cycles.length} cycles):</b>\n`;
       response += `   ⏳ Total Hours: ${this.parser.formatHours(grandTotals.totalHours)}h\n`;
+      // Show match count when filtering, otherwise show total entries
       if (tag) {
         response += `   📝 Matching Entries: ${grandTotals.totalEntries} (of ${totalOriginalEntries} total)\n`;
       } else {

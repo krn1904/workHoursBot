@@ -27,12 +27,25 @@ For deeper architecture context, see the [Technical Overview](TECHNICAL_DOCS.md)
 | `/today` | Today’s entries, time/tags per line, holiday marker, pay totals. |
 | `/log` | Latest 5 entries (newest first). |
 | `/category [tag]` | Lists all tags when omitted; totals and entry count when provided. |
-| `/paycycle` | Current pay-cycle hours plus a detailed entry list (capped 50). |
-| `/paycycles` | Last 5 pay cycles summary with totals and pay estimates. |
+| `/paycycle [tag]` | Current pay-cycle hours plus a detailed entry list (capped 50). Works standalone or with optional tag to filter by project. |
+| `/paycycles [tag]` | Last 5 pay cycles summary with totals and pay estimates. Works standalone or with optional tag to filter. |
 | `/help` | Cheat sheet including configured pay rates. |
 | `/delete …` | Preview/delete the most recent entries (confirmation required). |
 | `/stats`, `/validate`, `/reset confirm`, `/backup`, `/reminder …` | Admin utilities. |
+### Tag Filtering Examples
+The `/paycycle` and `/paycycles` commands **work standalone** and support optional tag filtering to view earnings for specific projects/categories:
 
+```
+/paycycle              → Shows all entries in current pay cycle (default)
+/paycycle project1     → Shows only "project1" entries  
+/paycycle freelance    → Shows only "freelance" entries
+/paycycles             → Shows last 5 cycles with all entries (default)
+```
+
+- **Tag parameter is completely optional** - commands work fine without it
+- Filtering uses **case-insensitive partial matching** (e.g., "proj" matches "project1", "project2")
+- Displays filtered count vs total entries when active
+- Works across all 5 pay cycles when using `/paycycles`
 The [API Quick Reference](API_DOCS.md) describes each command’s response format.
 
 ## Configuration
