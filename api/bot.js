@@ -235,20 +235,22 @@ async function handleCommand(text, chatId) {
         break;
       case '/paycycle':
         {
+          // arg contains optional tag filter (e.g., "project1", "freelance")
           const Database = require('../src/bot/services/database');
           const db = new Database();
           await db.connectToMongoDB();
           const commands = new Commands(db, parser);
-          response = await commands.handlePayCycle();
+          response = await commands.handlePayCycle(arg);
         }
         break;
       case '/paycycles':
         {
+          // arg contains optional tag filter for all 5 pay cycles
           const Database = require('../src/bot/services/database');
           const db = new Database();
           await db.connectToMongoDB();
           const commands = new Commands(db, parser);
-          response = await commands.handlePayCycles();
+          response = await commands.handlePayCycles(arg);
         }
         break;
       case '/delete':

@@ -688,13 +688,22 @@ class Commands {
    * - Total hours and breakdown by day type
    * - Entry count
    * 
+   * @param {string} tag - Optional tag to filter entries (e.g., 'project1')
    * @returns {Promise<string>} Formatted pay cycle summary
    */
-  async handlePayCycle() {
+  async handlePayCycle(tag = null) {
     try {
       const { cycleStart, cycleEnd } = getCurrentPayCycle();
       let entries = await this.db.getEntriesBetween(cycleStart, cycleEnd);
       entries = Array.isArray(entries) ? entries : [];
+      
+      // Filter by tag if specified (case-insensitive partial match)
+      // This allows users to view paycycle for specific projects/categories only
+      const originalCount = entries.length;
+      if (tag) {
+        const tagLower = tag.toLowerCase().trim();
+        entries = entries.filter(e => e.tag && e.tag.toLowerCase().includes(tagLower));
+      }
 
       const totals = calculateHoursByType(entries);
       const { weekdayHours, saturdayHours, sundayHours, holiday } = totals;
@@ -702,8 +711,17 @@ class Commands {
       const total = totals.total;
       const formattedTotal = this.parser.formatHours(total);
 
-      let response = `🗓️ <b>Current Pay Cycle</b> (${cycleStart} to ${cycleEnd})\n\n` +
-        `   ⏳ Total: ${formattedTotal} hours (${entries.length} entries)\n` +
+      // Add tag filter indicator to header if filtering is active
+      const tagFilter = tag ? ` 🏷️ [${tag}]` : '';
+      let response = `🗓️ <b>Current Pay Cycle${tagFilter}</b> (${cycleStart} to ${cycleEnd})\n\n`;
+      
+      // Show filtering info: how many entries match vs total entries
+      if (tag) {
+        response += `   🔍 Filtered by tag: <b>${tag}</b>\n`;
+        response += `   📊 Showing ${entries.length} of ${originalCount} total entries\n\n`;
+      }
+      
+      response += `   ⏳ Total: ${formattedTotal} hours (${entries.length} entries)\n` +
         `   🏢 Weekdays: ${this.parser.formatHours(weekdayHours)}h\n` +
         `   📆 Saturday: ${this.parser.formatHours(saturdayHours)}h\n` +
         `   ☀️ Sunday: ${this.parser.formatHours(sundayHours)}h`;
@@ -735,7 +753,8 @@ class Commands {
       }
 
       if (!entries || entries.length === 0) {
-        return response + '\n\n📄 No entries found in this cycle.';
+        const noEntriesMsg = tag ? `\n\n📄 No entries found with tag "${tag}" in this cycle.` : '\n\n📄 No entries found in this cycle.';
+        return response + noEntriesMsg;
       }
 
       // Newest first by timestamp
@@ -780,9 +799,10 @@ class Commands {
    * - Entry counts
    * - Pay estimates if configured
    * 
+   * @param {string} tag - Optional tag to filter entries (e.g., 'project1')
    * @returns {Promise<string>} Formatted pay cycles summary
    */
-  async handlePayCycles() {
+  async handlePayCycles(tag = null) {
     try {
       if (!this.db) {
         return '❌ <b>Database not available.</b> Cannot retrieve pay cycles.';
@@ -794,12 +814,27 @@ class Commands {
         return '📅 No pay cycles found.';
       }
 
-      let response = `📊 Last ${cycles.length} Pay Cycles\n\n`;
+      // Add tag filter indicator to header if filtering is active
+      const tagFilter = tag ? ` 🏷️ [${tag}]` : '';
+      let response = `📊 Last ${cycles.length} Pay Cycles${tagFilter}\n\n`;
+      
+      if (tag) {
+        response += `🔍 Filtered by tag: <b>${tag}</b>\n\n`;
+      }
 
-      // Process each cycle
+      // Process each cycle and apply tag filtering if specified
       const cycleSummaries = [];
+      let totalOriginalEntries = 0;
       for (const cycle of cycles) {
-        const entries = await this.db.getEntriesBetween(cycle.cycleStart, cycle.cycleEnd);
+        let entries = await this.db.getEntriesBetween(cycle.cycleStart, cycle.cycleEnd);
+        const originalCount = Array.isArray(entries) ? entries.length : 0;
+        totalOriginalEntries += originalCount;
+        
+        // Filter entries by tag using case-insensitive partial match
+        if (tag && Array.isArray(entries)) {
+          const tagLower = tag.toLowerCase().trim();
+          entries = entries.filter(e => e.tag && e.tag.toLowerCase().includes(tagLower));
+        }
         const totals = calculateHoursByType(entries);
         const { weekdayHours, saturdayHours, sundayHours, holiday } = totals;
         const total = totals.total;
@@ -872,7 +907,12 @@ class Commands {
 
       response += `📈 <b>Summary (${cycles.length} cycles):</b>\n`;
       response += `   ⏳ Total Hours: ${this.parser.formatHours(grandTotals.totalHours)}h\n`;
-      response += `   📝 Total Entries: ${grandTotals.totalEntries}\n`;
+      // Show match count when filtering, otherwise show total entries
+      if (tag) {
+        response += `   📝 Matching Entries: ${grandTotals.totalEntries} (of ${totalOriginalEntries} total)\n`;
+      } else {
+        response += `   📝 Total Entries: ${grandTotals.totalEntries}\n`;
+      }
       response += `   🏢 Weekdays: ${this.parser.formatHours(grandTotals.weekdayHours)}h\n`;
       response += `   📆 Saturday: ${this.parser.formatHours(grandTotals.saturdayHours)}h\n`;
       response += `   ☀️ Sunday: ${this.parser.formatHours(grandTotals.sundayHours)}h`;
@@ -946,8 +986,8 @@ class Commands {
            `• /today - Today's logged hours and entries\n` +
            `• /log - Last 5 work entries with timestamps\n` +
            `• /category [tag] - Hours for specific category/project\n` +
-           `• /paycycle - Current pay cycle summary with detailed entry list\n` +
-           `• /paycycles - Last 5 pay cycles summary with totals and pay estimates\n` +
+           `• /paycycle [tag] - Current pay cycle summary (optionally filter by tag)\n` +
+           `• /paycycles [tag] - Last 5 pay cycles summary (optionally filter by tag)\n` +
            `• /delete [n] - Preview last n entries (default 5, max 10)\n` +
            `• /delete confirm 1,3,4 - Delete specific items by preview index (1-10)\n` +
            `• /help - Show this help message\n\n` +
@@ -957,6 +997,7 @@ class Commands {
            `• /validate - Check database integrity\n\n` +
            `🏷️ <b>Tips:</b>\n` +
            `• Tags are automatically extracted (e.g., "coding", "client work")\n` +
+           `• Filter paycycles by tag: /paycycle project1 or /paycycles freelance\n` +
            `• Supports various time formats (6h, 5.5 hours, 3 hrs)\n` +
            `• Recognizes "today", "yesterday", and specific dates\n` +
            `• Use tags like "holiday", "public_holiday", or "public holiday" for holiday pay rates\n` +
