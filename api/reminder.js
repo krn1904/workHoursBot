@@ -60,11 +60,12 @@ module.exports = async (req, res) => {
 
     const providedToken = authHeader.substring(7); // Remove 'Bearer ' prefix
 
-    // Use timing-safe comparison to prevent timing attacks
-    const secretBuffer = Buffer.from(reminderSecret, 'utf8');
-    const providedBuffer = Buffer.from(providedToken, 'utf8');
-    if (secretBuffer.length !== providedBuffer.length ||
-        !crypto.timingSafeEqual(secretBuffer, providedBuffer)) {
+    // Use timing-safe comparison to prevent timing attacks.
+    // Hash both values first so buffers are always the same length,
+    // avoiding leaking the secret's length via a short-circuit check.
+    const secretHash = crypto.createHash('sha256').update(reminderSecret).digest();
+    const providedHash = crypto.createHash('sha256').update(providedToken).digest();
+    if (!crypto.timingSafeEqual(secretHash, providedHash)) {
       return res.status(401).json({
         error: 'Unauthorized',
         message: 'Invalid token'
