@@ -11,6 +11,7 @@
 
 const { sendScheduledReminder } = require('../src/bot/services/reminder');
 const TelegramBot = require('node-telegram-bot-api');
+const crypto = require('crypto');
 
 /**
  * API endpoint for triggering daily reminders from external services
@@ -42,23 +43,32 @@ module.exports = async (req, res) => {
       return res.status(500).json({ error: 'Server configuration error' });
     }
 
-    // Check authentication if reminder secret is configured
-    if (reminderSecret) {
-      const authHeader = req.headers.authorization;
-      if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return res.status(401).json({
-          error: 'Unauthorized',
-          message: 'Bearer token required'
-        });
-      }
+    // Require REMINDER_SECRET to be configured for security
+    if (!reminderSecret) {
+      console.error('REMINDER_SECRET is not configured — rejecting request');
+      return res.status(500).json({ error: 'Server configuration error' });
+    }
 
-      const providedToken = authHeader.substring(7); // Remove 'Bearer ' prefix
-      if (providedToken !== reminderSecret) {
-        return res.status(401).json({
-          error: 'Unauthorized',
-          message: 'Invalid token'
-        });
-      }
+    // Check authentication
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'Bearer token required'
+      });
+    }
+
+    const providedToken = authHeader.substring(7); // Remove 'Bearer ' prefix
+
+    // Use timing-safe comparison to prevent timing attacks
+    const secretBuffer = Buffer.from(reminderSecret, 'utf8');
+    const providedBuffer = Buffer.from(providedToken, 'utf8');
+    if (secretBuffer.length !== providedBuffer.length ||
+        !crypto.timingSafeEqual(secretBuffer, providedBuffer)) {
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'Invalid token'
+      });
     }
 
     // Parse request body

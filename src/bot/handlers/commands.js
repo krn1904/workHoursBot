@@ -1152,7 +1152,7 @@ class Commands {
       
     } catch (error) {
       console.error('Error in handleReset:', error);
-      return `❌ <b>Error during database reset:</b> ${error.message}\n\nPlease check your database connection and try again.`;
+      return `❌ <b>Error during database reset.</b> Please check your database connection and try again.`;
     }
   }
 

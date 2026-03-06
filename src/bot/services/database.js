@@ -359,10 +359,12 @@ class Database {
   async getCategoryTotal(tag) {
     try {
       await this.connectToMongoDB();
+      // Escape special regex characters to prevent ReDoS or unintended pattern matching
+      const escapedTag = tag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const result = await WorkEntry.aggregate([
         { 
           $match: { 
-            tag: { $regex: tag, $options: 'i' } 
+            tag: { $regex: escapedTag, $options: 'i' } 
           } 
         },
         { 
