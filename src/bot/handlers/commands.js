@@ -22,14 +22,16 @@ const moment = require('moment');
 /**
  * Pay cycle configuration
  * This defines the start date for pay cycles (must be a Monday)
- * All bi-weekly pay periods are calculated from this reference date
+ * All pay periods are calculated from this reference date
+ * Can be configured via PAY_CYCLE_START_DATE and PAY_CYCLE_LENGTH_DAYS environment variables
  */
-const PAY_CYCLE_START = '2025-08-04'; // YYYY-MM-DD format - Updated to match actual pay cycle
+const PAY_CYCLE_START = process.env.PAY_CYCLE_START_DATE || '2025-08-04'; // YYYY-MM-DD format
+const PAY_CYCLE_LENGTH_DAYS = parseInt(process.env.PAY_CYCLE_LENGTH_DAYS) || 14; // Number of days in each cycle
 
 /**
  * Calculates the current pay cycle dates based on the configured start date
  * 
- * Pay cycles are 14-day periods starting from PAY_CYCLE_START.
+ * Pay cycles are configurable-length periods starting from PAY_CYCLE_START.
  * This function determines which cycle the current date falls into.
  * 
  * @param {moment.Moment} today - Current date (defaults to today)
@@ -47,7 +49,7 @@ function getCurrentPayCycle(today = moment()) {
   if (daysSinceStart < 0) {
     // If we're before the first pay cycle, return the first cycle
     const cycleStart = start.clone();
-    const cycleEnd = cycleStart.clone().add(13, 'days');
+    const cycleEnd = cycleStart.clone().add(PAY_CYCLE_LENGTH_DAYS - 1, 'days');
     return { 
       cycleStart: cycleStart.format('YYYY-MM-DD'), 
       cycleEnd: cycleEnd.format('YYYY-MM-DD') 
@@ -55,11 +57,11 @@ function getCurrentPayCycle(today = moment()) {
   }
   
   // Calculate which cycle we're in (0-based)
-  const cyclesSinceStart = Math.floor(daysSinceStart / 14);
+  const cyclesSinceStart = Math.floor(daysSinceStart / PAY_CYCLE_LENGTH_DAYS);
   
   // Calculate the start of the current cycle
-  const cycleStart = start.clone().add(cyclesSinceStart * 14, 'days');
-  const cycleEnd = cycleStart.clone().add(13, 'days'); // 14 days total (0-13)
+  const cycleStart = start.clone().add(cyclesSinceStart * PAY_CYCLE_LENGTH_DAYS, 'days');
+  const cycleEnd = cycleStart.clone().add(PAY_CYCLE_LENGTH_DAYS - 1, 'days');
   
   return { 
     cycleStart: cycleStart.format('YYYY-MM-DD'), 
@@ -70,7 +72,7 @@ function getCurrentPayCycle(today = moment()) {
 /**
  * Calculates the last N pay cycles (including current cycle)
  * 
- * Pay cycles are 14-day periods starting from PAY_CYCLE_START.
+ * Pay cycles are configurable-length periods starting from PAY_CYCLE_START.
  * This function returns an array of pay cycle objects, starting from the current cycle
  * and going back N-1 cycles.
  * 
@@ -91,7 +93,7 @@ function getPayCycles(count = 5, today = moment()) {
   // Calculate which cycle we're currently in (0-based)
   let currentCycleIndex = 0;
   if (daysSinceStart >= 0) {
-    currentCycleIndex = Math.floor(daysSinceStart / 14);
+    currentCycleIndex = Math.floor(daysSinceStart / PAY_CYCLE_LENGTH_DAYS);
   }
   
   const cycles = [];
@@ -105,8 +107,8 @@ function getPayCycles(count = 5, today = moment()) {
       break;
     }
     
-    const cycleStart = start.clone().add(cycleIndex * 14, 'days');
-    const cycleEnd = cycleStart.clone().add(13, 'days'); // 14 days total (0-13)
+    const cycleStart = start.clone().add(cycleIndex * PAY_CYCLE_LENGTH_DAYS, 'days');
+    const cycleEnd = cycleStart.clone().add(PAY_CYCLE_LENGTH_DAYS - 1, 'days');
     
     cycles.push({
       cycleStart: cycleStart.format('YYYY-MM-DD'),
@@ -393,10 +395,11 @@ class Commands {
   /**
    * Provides access to the current pay cycle calculation
    * 
+   * @param {moment.Moment} today - Optional date to calculate cycle for (defaults to today)
    * @returns {Object} Current pay cycle start and end dates
    */
-  getCurrentPayCycle() {
-    return getCurrentPayCycle();
+  getCurrentPayCycle(today) {
+    return getCurrentPayCycle(today);
   }
 
   /**

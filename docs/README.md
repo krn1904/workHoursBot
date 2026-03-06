@@ -72,6 +72,15 @@ PAY_RATE_SYMBOL=$
 DATE_FORMAT_PREFERENCE=DMY
 # Options: DMY (DD/MM/YYYY, default) or MDY (MM/DD/YYYY)
 
+# Pay cycle configuration (optional)
+PAY_CYCLE_START_DATE=2025-08-04
+# Format: YYYY-MM-DD (recommended to be a Monday for easier tracking)
+# Default: 2025-08-04 - All pay periods are calculated from this date
+
+PAY_CYCLE_LENGTH_DAYS=14
+# Number of days in each pay cycle
+# Default: 14 (bi-weekly/fortnightly)
+
 # Reminder API authentication
 REMINDER_SECRET=...
 ```
