@@ -74,7 +74,7 @@ DATE_FORMAT_PREFERENCE=DMY
 
 # Pay cycle configuration (optional)
 PAY_CYCLE_START_DATE=2025-08-04
-# Format: YYYY-MM-DD (must be a Monday)
+# Format: YYYY-MM-DD (recommended to be a Monday for easier tracking)
 # Default: 2025-08-04 - All pay periods are calculated from this date
 
 PAY_CYCLE_LENGTH_DAYS=14
