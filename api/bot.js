@@ -89,7 +89,7 @@ module.exports = async (req, res) => {
             return res.status(200).json({ ok: true });
           } catch (sendError) {
             console.error('Failed to send message:', sendError.message);
-            console.error('Full error:', sendError);
+            console.error('Send error details:', sendError.message);
             // Try again without parse_mode
             try {
               await bot.sendMessage(response.chatId, response.text);
@@ -117,8 +117,7 @@ module.exports = async (req, res) => {
   } catch (error) {
     console.error('Error in bot function:', error);
     res.status(500).json({ 
-      error: 'Internal server error', 
-      message: error.message
+      error: 'Internal server error'
     });
   }
 };
