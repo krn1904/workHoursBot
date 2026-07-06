@@ -684,19 +684,61 @@ class Commands {
   }
 
   /**
-   * Handles /paycycle command - shows hours for current pay cycle
+   * Handles /paycycle command - shows hours and detailed logs for a pay cycle
    * 
-   * Displays work hours for the current bi-weekly pay period with:
+   * Displays work hours for the current (default) or a specific recent pay period with:
    * - Pay cycle date range
    * - Total hours and breakdown by day type
-   * - Entry count
+   * - Entry count and the detailed list of entries
    * 
-   * @param {string} tag - Optional tag to filter entries (e.g., 'project1')
-   * @returns {Promise<string>} Formatted pay cycle summary
+   * The argument may start with an optional cycle number to view a previous cycle,
+   * matching the numbering shown by /paycycles (highest number = current cycle):
+   *   /paycycle            -> current cycle
+   *   /paycycle project1   -> current cycle, filtered by tag
+   *   /paycycle 2          -> cycle number 2
+   *   /paycycle 2 project1 -> cycle number 2, filtered by tag
+   * 
+   * @param {string} arg - Optional "[cycleNumber] [tag]" argument string
+   * @returns {Promise<string>} Formatted pay cycle summary with detailed logs
    */
-  async handlePayCycle(tag = null) {
+  async handlePayCycle(arg = null) {
     try {
-      const { cycleStart, cycleEnd } = getCurrentPayCycle();
+      // Parse an optional leading cycle number. If the first token is an integer it
+      // selects a specific recent cycle; otherwise the whole argument is treated as a
+      // tag filter, preserving the original /paycycle [tag] behavior.
+      let tag = null;
+      let cycleSelector = null;
+      if (arg && typeof arg === 'string' && arg.trim()) {
+        const parts = arg.trim().split(/\s+/);
+        if (/^\d+$/.test(parts[0])) {
+          cycleSelector = parseInt(parts[0], 10);
+          tag = parts.slice(1).join(' ').trim() || null;
+        } else {
+          tag = arg.trim();
+        }
+      }
+
+      // Resolve the target cycle range and the header label to display.
+      let cycleStart, cycleEnd, headerLabel;
+      if (cycleSelector !== null) {
+        const cycles = getPayCycles(5); // index 0 = current, higher index = older
+        const totalCycles = cycles.length;
+        // Cycle numbers shown to the user match /paycycles: highest number = current cycle
+        if (cycleSelector < 1 || cycleSelector > totalCycles) {
+          return `❌ <b>Invalid cycle number.</b> Choose between 1 and ${totalCycles} ` +
+            `(Cycle ${totalCycles} is the current cycle).\n\nUse /paycycles to see the list of recent cycles.`;
+        }
+        const target = cycles[totalCycles - cycleSelector];
+        cycleStart = target.cycleStart;
+        cycleEnd = target.cycleEnd;
+        headerLabel = target.isCurrent ? `Pay Cycle ${cycleSelector} (Current)` : `Pay Cycle ${cycleSelector}`;
+      } else {
+        const current = getCurrentPayCycle();
+        cycleStart = current.cycleStart;
+        cycleEnd = current.cycleEnd;
+        headerLabel = 'Current Pay Cycle';
+      }
+
       let entries = await this.db.getEntriesBetween(cycleStart, cycleEnd);
       entries = Array.isArray(entries) ? entries : [];
       
@@ -716,7 +758,7 @@ class Commands {
 
       // Add tag filter indicator to header if filtering is active
       const tagFilter = tag ? ` 🏷️ [${tag}]` : '';
-      let response = `🗓️ <b>Current Pay Cycle${tagFilter}</b> (${cycleStart} to ${cycleEnd})\n\n`;
+      let response = `🗓️ <b>${headerLabel}${tagFilter}</b> (${cycleStart} to ${cycleEnd})\n\n`;
       
       // Show filtering info: how many entries match vs total entries
       if (tag) {
@@ -928,6 +970,9 @@ class Commands {
         response += `\n   💰 Total Earnings: ${formatCurrency(grandTotals.totalPay)}`;
       }
 
+      // Hint: users can drill into a specific cycle's detailed logs
+      response += `\n\n💡 Use /paycycle &lt;number&gt; to see detailed logs for a cycle (e.g. /paycycle ${cycleSummaries.length}).`;
+
       return response;
     } catch (error) {
       console.error('Error in handlePayCycles:', error);
@@ -989,7 +1034,7 @@ class Commands {
            `• /today - Today's logged hours and entries\n` +
            `• /log - Last 5 work entries with timestamps\n` +
            `• /category [tag] - Hours for specific category/project\n` +
-           `• /paycycle [tag] - Current pay cycle summary (optionally filter by tag)\n` +
+           `• /paycycle [number] [tag] - Pay cycle summary with detailed logs (number picks a past cycle; optionally filter by tag)\n` +
            `• /paycycles [tag] - Last 5 pay cycles summary (optionally filter by tag)\n` +
            `• /delete [n] - Preview last n entries (default 5, max 10)\n` +
            `• /delete confirm 1,3,4 - Delete specific items by preview index (1-10)\n` +
@@ -1001,6 +1046,7 @@ class Commands {
            `🏷️ <b>Tips:</b>\n` +
            `• Tags are automatically extracted (e.g., "coding", "client work")\n` +
            `• Filter paycycles by tag: /paycycle project1 or /paycycles freelance\n` +
+           `• View a past cycle's logs: /paycycle 2 (see numbers in /paycycles)\n` +
            `• Supports various time formats (6h, 5.5 hours, 3 hrs)\n` +
            `• Recognizes "today", "yesterday", and specific dates\n` +
            `• Use tags like "holiday", "public_holiday", or "public holiday" for holiday pay rates\n` +
